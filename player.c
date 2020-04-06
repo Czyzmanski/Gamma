@@ -6,7 +6,7 @@
 
 struct player {
     uint32_t number;
-    uint32_t busy_fields;
+    uint64_t busy_fields;
     uint32_t areas;
     uint32_t borders;
     bool golden_possible;
@@ -29,11 +29,11 @@ uint32_t player_number(player_t *p) {
     return p->number;
 }
 
-uint32_t player_busy_fields(player_t *p) {
+uint64_t player_busy_fields(player_t *p) {
     return p->busy_fields;
 }
 
-void player_set_busy_fields(player_t *p, uint32_t busy_fields) {
+void player_set_busy_fields(player_t *p, uint64_t busy_fields) {
     p->busy_fields = busy_fields;
 }
 

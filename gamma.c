@@ -40,22 +40,22 @@ static bool merge_areas(field_t *f1, field_t *f2) {
     field_t *f1_root = find_root(f1);
     field_t *f2_root = find_root(f2);
 
-    uint32_t f1_root_r = field_rank(f1_root);
-    uint32_t f2_root_r = field_rank(f2_root);
+    uint32_t f1_root_rank = field_rank(f1_root);
+    uint32_t f2_root_rank = field_rank(f2_root);
 
     if (f1_root == f2_root) {
         return false;
     }
     else {
-        if (f1_root_r < f2_root_r) {
+        if (f1_root_rank < f2_root_rank) {
             field_set_parent(f1, f2_root);
         }
-        else if (f1_root_r > f2_root_r) {
+        else if (f1_root_rank > f2_root_rank) {
             field_set_parent(f2, f1_root);
         }
         else {
             field_set_parent(f2, f1_root);
-            field_set_rank(f1_root, f1_root_r + 1);
+            field_set_rank(f1_root, f1_root_rank + 1);
         }
         return true;
     }
@@ -231,7 +231,7 @@ static player_t **unique_neighbours(gamma_t *g, uint32_t x, uint32_t y) {
     added = add_neighbour_if_unique(g, x - 1, y, neighbours, added);
     added = add_neighbour_if_unique(g, x + 1, y, neighbours, added);
     added = add_neighbour_if_unique(g, x, y - 1, neighbours, added);
-    added = add_neighbour_if_unique(g, x, y + 1, neighbours, added);
+    add_neighbour_if_unique(g, x, y + 1, neighbours, added);
 
     return neighbours;
 }
@@ -260,31 +260,23 @@ static void update_player_borders(gamma_t *g, field_t *f) {
     player_t *owner = field_owner(f);
     uint32_t borders = player_borders(owner);
 
-    if (adjacent_player_fields(g, owner, x, y) == 0) {
+    if (adjacent_player_fields(g, owner, x, y) > 0) {
         borders--;
     }
 
-    if (valid_free_single_field(g, owner, x - 1, y)) {
-        borders++;
-    }
-    if (valid_free_single_field(g, owner, x + 1, y)) {
-        borders++;
-    }
-    if (valid_free_single_field(g, owner, x, y - 1)) {
-        borders++;
-    }
-    if (valid_free_single_field(g, owner, x, y + 1)) {
-        borders++;
-    }
+    borders += valid_free_single_field(g, owner, x - 1, y);
+    borders += valid_free_single_field(g, owner, x + 1, y);
+    borders += valid_free_single_field(g, owner, x, y - 1);
+    borders += valid_free_single_field(g, owner, x, y + 1);
 
     player_set_borders(owner, borders);
 }
 
 static void merge_adjacent_player_areas_if_different(gamma_t *g, field_t *f,
                                                      uint32_t x, uint32_t y) {
-    if (valid_owner_field(g, field_owner(f), x, y)) {
+    player_t *owner = field_owner(f);
+    if (valid_owner_field(g, owner, x, y)) {
         if (merge_areas(f, g->board[y][x])) {
-            player_t *owner = field_owner(f);
             player_set_areas(owner, player_areas(owner) - 1);
         }
     }
@@ -313,6 +305,7 @@ bool gamma_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
         if (g->players_arr[player] == NULL) {
             g->players_arr[player] = player_new(player, true);
         }
+
         g->board[y][x] = field_new(x, y, g->players_arr[player]);
 
         player_t *p = g->players_arr[player];
@@ -326,5 +319,52 @@ bool gamma_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
         update_player_borders(g, f);
 
         return true;
+    }
+}
+
+uint64_t gamma_busy_fields(gamma_t *g, uint32_t player) {
+    if (g == NULL || !valid_player(g, player) || g->players_arr[player] == NULL) {
+        return 0;
+    }
+    else {
+        return player_busy_fields(g->players_arr[player]);
+    }
+}
+
+uint64_t gamma_free_fields(gamma_t *g, uint32_t player) {
+    if (g == NULL || !valid_player(g, player)) {
+        return 0;
+    }
+    else {
+        player_t *p = g->players_arr[player];
+
+        if (p == NULL || player_areas(p) < g->areas) {
+            return g->width * g->height - g->busy_fields;
+        }
+        else {
+            return player_borders(p);
+        }
+    }
+}
+
+char* gamma_board(gamma_t *g) {
+    if (g == NULL) {
+        return NULL;
+    }
+    else {
+        char *board = malloc((g->width + 1) * g->height);
+
+        if (board != NULL) {
+            uint64_t index = 0;
+
+            for (uint32_t y = g->height - 1; y >= 0; y--, index++) {
+                for (uint32_t x = 0; x < g->width; x++, index++) {
+                    board[index] = player_number(g->board[y][x]) - '0';
+                }
+                board[index] = '\n';
+            }
+        }
+        
+        return board;
     }
 }
