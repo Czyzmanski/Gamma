@@ -1,9 +1,11 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <stdbool.h>
+
 typedef struct player player_t;
 
-player_t *player_new(uint32_t number, bool golden_possible);
+player_t *player_new(uint32_t number);
 
 uint32_t player_number(player_t *p);
 

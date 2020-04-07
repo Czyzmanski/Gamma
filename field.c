@@ -9,6 +9,7 @@ struct field {
     player_t *owner;
     field_t *parent;
     uint32_t rank;
+    state_t state;
 };
 
 field_t *field_new(uint32_t x, uint32_t y, player_t *owner) {
@@ -20,6 +21,7 @@ field_t *field_new(uint32_t x, uint32_t y, player_t *owner) {
     f->owner = owner;
     f->parent = NULL;
     f->rank = 0;
+    f->state = UNCHECKED;
 
     return f;
 }
@@ -54,6 +56,14 @@ uint32_t field_rank(field_t *f) {
 
 void field_set_rank(field_t *f, uint32_t rank) {
     f->rank = rank;
+}
+
+state_t field_state(field_t *f) {
+    return f->state;
+}
+
+void field_set_state(field_t *f, state_t state) {
+    f->state = state;
 }
 
 void field_delete(field_t *f) {

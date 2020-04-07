@@ -12,7 +12,7 @@ struct player {
     bool golden_possible;
 };
 
-player_t *player_new(uint32_t number, bool golden_possible) {
+player_t *player_new(uint32_t number) {
     player_t *p = malloc(sizeof(player_t));
     //TODO: check malloc
 
@@ -20,7 +20,7 @@ player_t *player_new(uint32_t number, bool golden_possible) {
     p->busy_fields = 0;
     p->areas = 0;
     p->borders = 0;
-    p->golden_possible = golden_possible;
+    p->golden_possible = true;
 
     return p;
 }
