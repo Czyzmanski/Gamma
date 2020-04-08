@@ -185,17 +185,6 @@ static uint8_t player_adjacent_fields(gamma_t *g, player_t *p,
     return fields;
 }
 
-static uint8_t player_adjacent_free_fields(gamma_t *g, uint32_t x, uint32_t y) {
-    uint8_t fields = 0;
-
-    fields += valid_free_field(g, x - 1, y);
-    fields += valid_free_field(g, x + 1, y);
-    fields += valid_free_field(g, x, y - 1);
-    fields += valid_free_field(g, x, y + 1);
-
-    return fields;
-}
-
 static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
     if (!valid_free_field(g, x, y)) {
         return false;
