@@ -71,24 +71,28 @@ static void board_remove_rows(field_t ***board, uint32_t width,
 
 static field_t ***board_new(uint32_t width, uint32_t height) {
     field_t ***board = malloc(height * sizeof(field_t ***));
+
     if (board == NULL) {
         return NULL;
     }
     else {
         bool mem_error = false;
-        for (uint32_t i = 0; i < height && !mem_error; i++) {
+        uint32_t added_rows = 0;
+
+        for (uint32_t i = 0; i < height && !mem_error; i++, added_rows++) {
             board[i] = calloc(width, sizeof(field_t **));
             if (board[i] == NULL) {
                 mem_error = true;
-                board_remove_rows(board, width, i);
+                board_remove_rows(board, width, added_rows);
             }
         }
-        if (mem_error) {
-            free(board);
-            return NULL;
+
+        if (!mem_error) {
+            return board;
         }
         else {
-            return board;
+            free(board);
+            return NULL;
         }
     }
 }
@@ -158,37 +162,37 @@ static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
     return valid_x(g, x) && valid_y(g, y) && g->board[y][x] == NULL;
 }
 
-static bool valid_owner_field(gamma_t *g, player_t *owner, int64_t x, int64_t y) {
+static bool player_valid_field(gamma_t *g, player_t *p, int64_t x, int64_t y) {
     if (!valid_x(g, x) || !valid_y(g, y)) {
         return false;
     }
     else {
         field_t *f = g->board[y][x];
-        return f != NULL && field_owner(f) == owner;
+        return f != NULL && field_owner(f) == p;
     }
 }
 
-static uint8_t adjacent_player_fields(gamma_t *g, player_t *owner,
+static uint8_t player_adjacent_fields(gamma_t *g, player_t *p,
                                       uint32_t x, uint32_t y) {
-    uint8_t c = 0;
+    uint8_t fields = 0;
 
-    c += valid_owner_field(g, owner, x - 1, y);
-    c += valid_owner_field(g, owner, x + 1, y);
-    c += valid_owner_field(g, owner, x, y - 1);
-    c += valid_owner_field(g, owner, x, y + 1);
+    fields += player_valid_field(g, p, x - 1, y);
+    fields += player_valid_field(g, p, x + 1, y);
+    fields += player_valid_field(g, p, x, y - 1);
+    fields += player_valid_field(g, p, x, y + 1);
 
-    return c;
+    return fields;
 }
 
 static uint8_t adjacent_free_fields(gamma_t *g, uint32_t x, uint32_t y) {
-    uint8_t c = 0;
+    uint8_t fields = 0;
 
-    c += valid_free_field(g, x - 1, y);
-    c += valid_free_field(g, x + 1, y);
-    c += valid_free_field(g, x, y - 1);
-    c += valid_free_field(g, x, y + 1);
+    fields += valid_free_field(g, x - 1, y);
+    fields += valid_free_field(g, x + 1, y);
+    fields += valid_free_field(g, x, y - 1);
+    fields += valid_free_field(g, x, y + 1);
 
-    return c;
+    return fields;
 }
 
 static bool move_possible(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
@@ -199,7 +203,7 @@ static bool move_possible(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
         return true;
     }
     else {
-        return adjacent_player_fields(g, p, x, y) > 0;
+        return player_adjacent_fields(g, p, x, y) > 0;
     }
 }
 
@@ -213,7 +217,7 @@ static bool unique_neighbour(player_t *p, player_t **neighbours, uint8_t added) 
     return i == added;
 }
 
-static bool valid_unique_neighbour_field(gamma_t *g, int64_t x, int64_t y,
+static bool neighbour_valid_unique_field(gamma_t *g, int64_t x, int64_t y,
                                          player_t **neighbours, uint8_t added) {
     if (!valid_x(g, x) || !valid_y(g, y)) {
         return false;
@@ -226,11 +230,10 @@ static bool valid_unique_neighbour_field(gamma_t *g, int64_t x, int64_t y,
 
 static uint8_t add_neighbour_if_unique(gamma_t *g, int64_t x, int64_t y,
                                        player_t **neighbours, uint8_t added) {
-    if (valid_unique_neighbour_field(g, x, y, neighbours, added)) {
+    if (neighbour_valid_unique_field(g, x, y, neighbours, added)) {
         neighbours[added] = field_owner(g->board[y][x]);
         added++;
     }
-
     return added;
 }
 
@@ -246,7 +249,7 @@ static player_t **unique_neighbours(gamma_t *g, uint32_t x, uint32_t y) {
     return neighbours;
 }
 
-static void update_neighbours_borders(gamma_t *g, field_t *f) {
+static void neighbours_update_borders(gamma_t *g, field_t *f) {
     player_t *owner = field_owner(f);
     player_t **neighbours = unique_neighbours(g, field_x(f), field_y(f));
 
@@ -261,16 +264,16 @@ static void update_neighbours_borders(gamma_t *g, field_t *f) {
 
 static inline bool valid_free_single_field(gamma_t *g, player_t *owner,
                                            int64_t x, int64_t y) {
-    return valid_free_field(g, x, y) && adjacent_player_fields(g, owner, x, y) == 1;
+    return valid_free_field(g, x, y) && player_adjacent_fields(g, owner, x, y) == 1;
 }
 
-static void update_player_borders(gamma_t *g, field_t *f) {
+static void player_update_borders(gamma_t *g, field_t *f) {
     uint32_t x = field_x(f);
     uint32_t y = field_y(f);
     player_t *owner = field_owner(f);
     uint32_t borders = player_borders(owner);
 
-    if (adjacent_player_fields(g, owner, x, y) > 0) {
+    if (player_adjacent_fields(g, owner, x, y) > 0) {
         borders--;
     }
 
@@ -282,26 +285,24 @@ static void update_player_borders(gamma_t *g, field_t *f) {
     player_set_borders(owner, borders);
 }
 
-static void merge_adjacent_player_areas_if_different(gamma_t *g, field_t *f,
-                                                     int64_t x, int64_t y) {
+static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
+                                        int64_t x, int64_t y) {
     player_t *owner = field_owner(f);
-    if (valid_owner_field(g, owner, x, y)) {
-        if (merge_areas(f, g->board[y][x])) {
-            player_set_areas(owner, player_areas(owner) - 1);
-        }
+    if (player_valid_field(g, owner, x, y) && merge_areas(f, g->board[y][x])) {
+        player_set_areas(owner, player_areas(owner) - 1);
     }
 }
 
-static void update_player_areas(gamma_t *g, field_t *f) {
+static void player_update_areas(gamma_t *g, field_t *f) {
     make_new_area(f);
 
     uint32_t x = field_x(f);
     uint32_t y = field_y(f);
 
-    merge_adjacent_player_areas_if_different(g, f, x - 1, y);
-    merge_adjacent_player_areas_if_different(g, f, x + 1, y);
-    merge_adjacent_player_areas_if_different(g, f, x, y - 1);
-    merge_adjacent_player_areas_if_different(g, f, x, y + 1);
+    player_merge_adjacent_areas(g, f, x - 1, y);
+    player_merge_adjacent_areas(g, f, x + 1, y);
+    player_merge_adjacent_areas(g, f, x, y - 1);
+    player_merge_adjacent_areas(g, f, x, y + 1);
 }
 
 bool gamma_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
@@ -324,9 +325,9 @@ bool gamma_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
         g->busy_fields++;
         player_set_busy_fields(p, player_busy_fields(p) + 1);
 
-        update_player_areas(g, f);
-        update_neighbours_borders(g, f);
-        update_player_borders(g, f);
+        player_update_areas(g, f);
+        neighbours_update_borders(g, f);
+        player_update_borders(g, f);
 
         return true;
     }
@@ -348,18 +349,18 @@ static bool player_golden_move_legal(gamma_t *g, player_t *p,
         return true;
     }
     else {
-        return adjacent_player_fields(g, p, x, y) > 0;
+        return player_adjacent_fields(g, p, x, y) > 0;
     }
 }
 
-static inline bool valid_player_search_field(gamma_t *g, player_t *owner,
+static inline bool player_valid_search_field(gamma_t *g, player_t *owner,
                                              int64_t x, int64_t y) {
     return valid_busy_field(g, x, y) && field_owner(g->board[y][x]) == owner;
 }
 
 static bool area_search(gamma_t *g, player_t *owner,
                         int64_t x, int64_t y, state_t desired) {
-    if (!valid_player_search_field(g, owner, x, y)) {
+    if (!player_valid_search_field(g, owner, x, y)) {
         return false;
     }
     else if (field_state(g->board[y][x]) == desired) {
@@ -393,7 +394,7 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
 
 static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
     player_t *victim = field_owner(g->board[y][x]);
-    uint8_t mx_new_areas = adjacent_player_fields(g, victim, x, y) - 1;
+    uint8_t mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
 
     if (player_areas(victim) + mx_new_areas <= g->areas) {
         return true;
@@ -407,9 +408,9 @@ static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
     }
 }
 
-static void area_update_parent_rank(gamma_t *g, player_t *owner,
+static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
                                     int64_t x, int64_t y, field_t *parent) {
-    if (valid_player_search_field(g, owner, x, y)
+    if (player_valid_search_field(g, owner, x, y)
         && field_state(g->board[y][x]) == COUNTED) {
 
         field_t *f = g->board[y][x];
@@ -418,17 +419,17 @@ static void area_update_parent_rank(gamma_t *g, player_t *owner,
         field_set_parent(f, parent);
         field_set_state(f, MODIFIED);
 
-        area_update_parent_rank(g, owner, x - 1, y, parent);
-        area_update_parent_rank(g, owner, x + 1, y, parent);
-        area_update_parent_rank(g, owner, x, y - 1, parent);
-        area_update_parent_rank(g, owner, x, y + 1, parent);
+        area_update_parent_and_rank(g, owner, x - 1, y, parent);
+        area_update_parent_and_rank(g, owner, x + 1, y, parent);
+        area_update_parent_and_rank(g, owner, x, y - 1, parent);
+        area_update_parent_and_rank(g, owner, x, y + 1, parent);
     }
 }
 
 static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y, uint32_t areas) {
-    if (valid_player_search_field(g, old_owner, x, y)) {
-        if (field_state(g->board[y][x]) != COUNTED) {
+    if (player_valid_search_field(g, old_owner, x, y)) {
+        if (field_state(g->board[y][x]) != MODIFIED) {
             areas++;
 
             field_t *root = g->board[y][x];
@@ -436,10 +437,10 @@ static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
             field_set_rank(root, 0);
             field_set_parent(root, NULL);
 
-            area_update_parent_rank(g, old_owner, x - 1, y, root);
-            area_update_parent_rank(g, old_owner, x + 1, y, root);
-            area_update_parent_rank(g, old_owner, x, y - 1, root);
-            area_update_parent_rank(g, old_owner, x, y + 1, root);
+            area_update_parent_and_rank(g, old_owner, x - 1, y, root);
+            area_update_parent_and_rank(g, old_owner, x + 1, y, root);
+            area_update_parent_and_rank(g, old_owner, x, y - 1, root);
+            area_update_parent_and_rank(g, old_owner, x, y + 1, root);
         }
     }
 
@@ -471,8 +472,8 @@ static void gamma_golden_move_update_state(gamma_t *g, uint32_t player,
     field_set_owner(f, new_owner);
     field_set_state(f, UNCHECKED);
 
-    update_player_areas(g, f);
-    update_player_borders(g, f);
+    player_update_areas(g, f);
+    player_update_borders(g, f);
     player_set_golden_possible(new_owner, false);
     player_set_busy_fields(new_owner, player_busy_fields(new_owner) + 1);
 
