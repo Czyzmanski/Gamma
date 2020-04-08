@@ -46,13 +46,13 @@ static bool merge_areas(field_t *f1, field_t *f2) {
     }
     else {
         if (f1_root_rank < f2_root_rank) {
-            field_set_parent(f1, f2_root);
+            field_set_parent(f1_root, f2_root);
         }
         else if (f1_root_rank > f2_root_rank) {
-            field_set_parent(f2, f1_root);
+            field_set_parent(f2_root, f1_root);
         }
         else {
-            field_set_parent(f2, f1_root);
+            field_set_parent(f2_root, f1_root);
             field_set_rank(f1_root, f1_root_rank + 1);
         }
         return true;
@@ -100,11 +100,13 @@ static field_t ***board_new(uint32_t width, uint32_t height) {
 static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
                        uint32_t players, uint32_t areas) {
     g->board = board_new(width, height);
+
     if (g->board == NULL) {
         return false;
     }
     else {
         g->players_arr = calloc(players + 1, sizeof(player_t *));
+
         if (g->players_arr == NULL) {
             return false;
         }
@@ -145,12 +147,14 @@ void gamma_delete(gamma_t *g) {
             board_remove_rows(g->board, g->width, g->height);
             free(g->board);
         }
+
         if (g->players_arr != NULL) {
-            for (uint32_t i = 0; i < g->players; i++) {
+            for (uint32_t i = 0; i <= g->players; i++) {
                 player_delete(g->players_arr[i]);
             }
             free(g->players_arr);
         }
+
         free(g);
     }
 }
