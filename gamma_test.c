@@ -7,9 +7,9 @@
  */
 
 // CMake w wersji release wyłącza asercje.
-//#ifdef NDEBUG
-//#undef NDEBUG
-//#endif
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 
 #include "gamma.h"
 #include <assert.h>

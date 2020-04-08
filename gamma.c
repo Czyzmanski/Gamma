@@ -15,7 +15,7 @@ struct gamma {
     player_t **players_arr;
 };
 
-static void make_new_area(field_t *f) {
+static void area_new(field_t *f) {
     field_set_rank(f, 0);
     field_set_parent(f, NULL);
 
@@ -23,20 +23,20 @@ static void make_new_area(field_t *f) {
     player_set_areas(owner, player_areas(owner) + 1);
 }
 
-static field_t *find_root(field_t *f) {
+static field_t *area_find_root(field_t *f) {
     if (field_parent(f) == NULL) {
         return f;
     }
     else {
-        field_t *root = find_root(field_parent(f));
+        field_t *root = area_find_root(field_parent(f));
         field_set_parent(f, root);
         return root;
     }
 }
 
 static bool merge_areas(field_t *f1, field_t *f2) {
-    field_t *f1_root = find_root(f1);
-    field_t *f2_root = find_root(f2);
+    field_t *f1_root = area_find_root(f1);
+    field_t *f2_root = area_find_root(f2);
 
     uint32_t f1_root_rank = field_rank(f1_root);
     uint32_t f2_root_rank = field_rank(f2_root);
@@ -97,6 +97,28 @@ static field_t ***board_new(uint32_t width, uint32_t height) {
     }
 }
 
+static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
+                       uint32_t players, uint32_t areas) {
+    g->board = board_new(width, height);
+    if (g->board == NULL) {
+        return false;
+    }
+    else {
+        g->players_arr = calloc(players + 1, sizeof(player_t *));
+        if (g->players_arr == NULL) {
+            return false;
+        }
+        else {
+            g->width = width;
+            g->height = height;
+            g->players = players;
+            g->areas = areas;
+            g->busy_fields = 0;
+            return true;
+        }
+    }
+}
+
 gamma_t *gamma_new(uint32_t width, uint32_t height,
                    uint32_t players, uint32_t areas) {
     if (width == 0 || height == 0 || players == 0 || areas == 0) {
@@ -107,41 +129,28 @@ gamma_t *gamma_new(uint32_t width, uint32_t height,
         if (g == NULL) {
             return NULL;
         }
+        else if (gamma_init(g, width, height, players, areas)) {
+            return g;
+        }
         else {
-            g->board = board_new(width, height);
-            if (g->board == NULL) {
-                free(g);
-                return NULL;
-            }
-            else {
-                g->players_arr = calloc(players + 1, sizeof(player_t *));
-                if (g->players_arr == NULL) {
-                    free(g);
-                    return NULL;
-                }
-                else {
-                    g->width = width;
-                    g->height = height;
-                    g->players = players;
-                    g->areas = areas;
-                    g->busy_fields = 0;
-                    return g;
-                }
-            }
+            gamma_delete(g);
+            return NULL;
         }
     }
 }
 
 void gamma_delete(gamma_t *g) {
     if (g != NULL) {
-        board_remove_rows(g->board, g->width, g->height);
-        free(g->board);
-
-        for (uint32_t i = 0; i < g->players; i++) {
-            player_delete(g->players_arr[i]);
+        if (g->board != NULL) {
+            board_remove_rows(g->board, g->width, g->height);
+            free(g->board);
         }
-        free(g->players_arr);
-
+        if (g->players_arr != NULL) {
+            for (uint32_t i = 0; i < g->players; i++) {
+                player_delete(g->players_arr[i]);
+            }
+            free(g->players_arr);
+        }
         free(g);
     }
 }
@@ -199,11 +208,9 @@ static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
 
 static bool unique_neighbour(player_t *p, player_t **neighbours, uint8_t added) {
     uint8_t i = 0;
-
     while (i < added && p != neighbours[i]) {
         i++;
     }
-
     return i == added;
 }
 
@@ -299,7 +306,7 @@ static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
 }
 
 static void player_update_areas(gamma_t *g, field_t *f) {
-    make_new_area(f);
+    area_new(f);
 
     uint32_t x = field_x(f);
     uint32_t y = field_y(f);
