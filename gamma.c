@@ -212,9 +212,11 @@ static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
 
 static bool unique_neighbour(player_t *p, player_t **neighbours, uint8_t added) {
     uint8_t i = 0;
+
     while (i < added && p != neighbours[i]) {
         i++;
     }
+
     return i == added;
 }
 
@@ -270,7 +272,7 @@ static inline bool player_valid_free_single_field(gamma_t *g, player_t *owner,
 
 static uint8_t player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
                                                   uint32_t x, uint32_t y) {
-    uint32_t fields = 0;
+    uint8_t fields = 0;
 
     fields += player_valid_free_single_field(g, owner, x - 1, y);
     fields += player_valid_free_single_field(g, owner, x + 1, y);
@@ -304,6 +306,7 @@ static void player_update_borders(gamma_t *g, field_t *f, bool golden_move) {
 static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
                                         int64_t x, int64_t y) {
     player_t *owner = field_owner(f);
+
     if (player_valid_field(g, owner, x, y) && merge_areas(f, g->board[y][x])) {
         player_set_areas(owner, player_areas(owner) - 1);
     }
@@ -430,7 +433,7 @@ static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
 static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
                                         int64_t x, int64_t y, field_t *parent) {
     if (player_valid_search_field(g, owner, x, y)
-        && field_state(g->board[y][x]) == COUNTED) {
+        && field_state(g->board[y][x]) != MODIFIED) {
 
         field_t *f = g->board[y][x];
 
@@ -476,6 +479,11 @@ static void old_owner_update_areas(gamma_t *g, player_t *old_owner,
     areas = area_set_component(g, old_owner, x, y + 1, areas);
 
     player_set_areas(old_owner, areas);
+
+    area_search(g, old_owner, x - 1, y, UNCHECKED);
+    area_search(g, old_owner, x + 1, y, UNCHECKED);
+    area_search(g, old_owner, x, y - 1, UNCHECKED);
+    area_search(g, old_owner, x, y + 1, UNCHECKED);
 }
 
 static void gamma_golden_move_update(gamma_t *g, uint32_t player,
