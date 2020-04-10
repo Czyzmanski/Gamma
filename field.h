@@ -12,12 +12,25 @@
  */
 typedef struct field field_t;
 
+/**
+ * Wyliczenia pozwalajace na przechowywanie informacji o statusie
+ * pola, zmieniającym się w wyniku wykonywania przeszukiwania w głąb (DFS)
+ * sprawdzającym legalność złotego ruchu.
+ */
 enum status {
-    UNCHECKED,
-    COUNTED,
-    MODIFIED
+    UNCHECKED, /**< Domyślny status pola. */
+    COUNTED,   /**< Pole zostało sprawdzone podczas liczenia niepołączonych
+                *   składowych danego obszaru gracza, któremu jest zabierane
+                *   pole, mogących powstać w wyniku wykonywania złotego ruchu
+                *   przez przeciwnika. */
+    MODIFIED   /**< Pole zostało uwzględnione podczas modyfikowania obszaru
+                *   z którego zostało zabrane graczowi pole w wyniku wykonania
+                *   złotego ruchu przez przeciwnika. */
 };
 
+/**
+ * Typ wyliczeniowy pozwalający na przechowywanie informacji o statusie pola.
+ */
 typedef enum status status_t;
 
 /** @brief Tworzy strukturę przechowującą stan pola (@p x, @p y).
@@ -105,7 +118,7 @@ void field_set_rank(field_t *f, uint32_t rank);
  * Zwraca wartość @p status pola wskazywanego przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Wartość @p status pola wskazywanego przez @p f, jedna z wartości
- * UNCHECKED, COUNTED lub MODIFIED.
+ * wyliczenia @ref status.
  */
 status_t field_status(field_t *f);
 
@@ -113,7 +126,7 @@ status_t field_status(field_t *f);
  * Przypisuje składowej @p status pola wskazywanego przez @p f wartość zmiennej
  * @p status będącej paramatrem procedury.
  * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola,
- * @param[in] status    – status, jedna z wartości UNCHECKED, COUNTED lub MODIFIED.
+ * @param[in] status    – status pola, jedna z wartości wyliczenia @ref status.
  */
 void field_set_status(field_t *f, status_t status);
 
