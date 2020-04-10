@@ -351,15 +351,15 @@ static inline bool player_valid_search_field(gamma_t *g, player_t *owner,
 }
 
 static bool area_search(gamma_t *g, player_t *owner,
-                        int64_t x, int64_t y, state_t desired) {
+                        int64_t x, int64_t y, status_t desired) {
     if (!player_valid_search_field(g, owner, x, y)) {
         return false;
     }
-    else if (field_state(g->board[y][x]) == desired) {
+    else if (field_status(g->board[y][x]) == desired) {
         return false;
     }
     else {
-        field_set_state(g->board[y][x], desired);
+        field_set_status(g->board[y][x], desired);
 
         area_search(g, owner, x - 1, y, desired);
         area_search(g, owner, x + 1, y, desired);
@@ -372,7 +372,7 @@ static bool area_search(gamma_t *g, player_t *owner,
 
 static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
                                  uint32_t x, uint32_t y) {
-    field_set_state(g->board[y][x], COUNTED);
+    field_set_status(g->board[y][x], COUNTED);
 
     uint32_t areas = player_areas(victim) - 1;
 
@@ -403,13 +403,13 @@ static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
 static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
                                         int64_t x, int64_t y, field_t *parent) {
     if (player_valid_search_field(g, owner, x, y)
-        && field_state(g->board[y][x]) != MODIFIED) {
+        && field_status(g->board[y][x]) != MODIFIED) {
 
         field_t *f = g->board[y][x];
 
         field_set_rank(f, 0);
         field_set_parent(f, parent);
-        field_set_state(f, MODIFIED);
+        field_set_status(f, MODIFIED);
 
         area_update_parent_and_rank(g, owner, x - 1, y, parent);
         area_update_parent_and_rank(g, owner, x + 1, y, parent);
@@ -421,11 +421,11 @@ static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
 static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y, uint32_t areas) {
     if (player_valid_search_field(g, old_owner, x, y)) {
-        if (field_state(g->board[y][x]) != MODIFIED) {
+        if (field_status(g->board[y][x]) != MODIFIED) {
             areas++;
 
             field_t *root = g->board[y][x];
-            field_set_state(root, MODIFIED);
+            field_set_status(root, MODIFIED);
             field_set_rank(root, 0);
             field_set_parent(root, NULL);
 
@@ -565,7 +565,7 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
     player_t *old_owner = field_owner(f);
 
     field_set_owner(f, new_owner);
-    field_set_state(f, UNCHECKED);
+    field_set_status(f, UNCHECKED);
 
     player_update_areas(g, f);
     player_update_borders(g, f, true);
