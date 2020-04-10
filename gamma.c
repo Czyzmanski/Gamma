@@ -1,3 +1,7 @@
+/** @file
+ * Implementacja klasy przechowującej stan gry gamma
+ */
+
 #include <stdlib.h>
 
 #include "gamma.h"
@@ -16,9 +20,17 @@ struct gamma {
 };
 
 /** @name Obszar
- * Wykorzystanie struktury Find-Union do utrzymania informacji o obszarach gracza.
+ * Wykorzystanie struktury Find-Union z kompresją ścieżki oraz łączeniem według
+ * rangi do efektywnego utrzymania informacji o obszarach każdego z graczy.
  */
-/**@{*/
+///@{
+
+/** @brief Tworzy nowy obszar.
+ * Czyni pole @p f korzeniem nowego obszaru: ustawia składową @p rank pola @p f
+ * na 0 raz ustawia składową @p root pola @p f na NULL. Zwiększa o 1 wartość
+ * składowej @p areas gracza @p owner będącego właścicielem pola @p f.
+ * @param[in,out] f – wskaźnik na strukturę przechowującą stan pola.
+ */
 static void area_new(field_t *f) {
     field_set_rank(f, 0);
     field_set_parent(f, NULL);
@@ -27,6 +39,14 @@ static void area_new(field_t *f) {
     player_set_areas(owner, player_areas(owner) + 1);
 }
 
+/** @brief Znajduje korzeń obszaru do którego należy pole @p f.
+ * Rekurencyjnie znajduje korzeń obszaru @p root do którego należy pole @p f.
+ * Dokonuje kompresji ścieżki od @p f do @p root, ustawiając składową @p parent
+ * w każdym polu na tej ścieżce na @p root, z wyjątkiem samego korzenia @p root.
+ * @param[in,out] f – wskaźnik na strukturę przechowującą stan pola.
+ * @return Wskaźnik na strukturę przechowującą stan pola będącego korzeniem
+ * obszaru do którego należy pole @p f.
+ */
 static field_t *area_find_root(field_t *f) {
     if (field_parent(f) == NULL) {
         return f;
@@ -38,7 +58,22 @@ static field_t *area_find_root(field_t *f) {
     }
 }
 
-static bool merge_areas(field_t *f1, field_t *f2) {
+/** @brief Łączy dwa obszary w jeden.
+ * Ustawia wskaźnik @p parent korzenia @p f1_root pierwszego obszaru,
+ * do którego należy pole @p f1, na korzeń @p f2_root drugiego obszaru,
+ * do którego należy pole @p f2, jeśli ranga @p f1_root_rank pierwszego obszaru
+ * jest mniejsza od rangi @p f2_root_rank drugiego obszaru. W przeciwnym razie,
+ * ustawia wskaźnik @p parent pola @p f2_root na @p f1_root. Jeśli wartość
+ * @p f1_root_rank jest równa wartości @p f2_root_rank, zwiększa rangę pierwszego
+ * pola, zwiększając wartość składowej @p rank w polu @p f1_root o 1.
+ * @param[in,out] f1 – wskaźnik na strukturę przechowującą stan pola
+ *                     należącego do pierwszego obszaru,
+ * @param[in,out] f2 – wskaźnik na strukturę przechowującą stan pola
+ *                     należącego do drugiego obszaru.
+ * @return Wartość @p false, gdy pola @p f1 oraz @p f2 należą do tego samego
+ * obszaru i nie ma czego łączyć, a @p true w przeciwnym przypadku.
+ */
+static bool area_merge(field_t *f1, field_t *f2) {
     field_t *f1_root = area_find_root(f1);
     field_t *f2_root = area_find_root(f2);
 
@@ -52,17 +87,17 @@ static bool merge_areas(field_t *f1, field_t *f2) {
         if (f1_root_rank < f2_root_rank) {
             field_set_parent(f1_root, f2_root);
         }
-        else if (f1_root_rank > f2_root_rank) {
-            field_set_parent(f2_root, f1_root);
-        }
         else {
             field_set_parent(f2_root, f1_root);
-            field_set_rank(f1_root, f1_root_rank + 1);
+            if (f1_root_rank == f2_root_rank) {
+                field_set_rank(f1_root, f1_root_rank + 1);
+            }
         }
         return true;
     }
 }
-/**@}*/
+
+///@}
 
 /** @brief Sprawdza poprawność numeru gracza.
  * Sprawdza, czy numer gracza @p player jest liczbą całkowitą dodatnią
@@ -79,7 +114,7 @@ static inline bool valid_player(gamma_t *g, int64_t player) {
 
 /** @brief Sprawdza poprawność numeru kolumny.
  * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
- * mniejszą od wartości @p width z funkcji @ref gamma_new.
+ * mniejszą od wartości @p width z funkcji @ref gamma_new
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
  *                @p width z funkcji @ref gamma_new,
@@ -103,11 +138,45 @@ static inline bool valid_y(gamma_t *g, int64_t y) {
     return 0 <= y && y < g->height;
 }
 
+/** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i wolne.
+ * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p width z funkcji @ref gamma_new.
+ * Sprawdza, czy numer wiersza @p y jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p height z funkcji @ref gamma_new.
+ * Sprawdza, czy pole nie zostało jeszcze stworzone, tzn. czy wartość wskaźnika
+ * @p g->board[y][x] jest równa NULL, lub, w przeciwnym razie, czy pole nie ma
+ * przypisanego właściciela, tzn. czy wskaźnik @p owner będący składową pola
+ * na które wskazuje wskaźnik @p g->board[y][x] jest równy NULL.
+ * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                @p width z funkcji @ref gamma_new,
+ * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                @p height z funkcji @ref gamma_new,
+ * @return Wartość @p true, jeśli współrzędne pola są poprawne oraz pole
+ * nie jest zajęte przez pewnego gracza, a @p false w przeciwnym przypadku.
+ */
 static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
     return valid_x(g, x) && valid_y(g, y)
            && (g->board[y][x] == NULL || field_owner(g->board[y][x]) == NULL);
 }
 
+/** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i należy do gracza @p p.
+ * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p width z funkcji @ref gamma_new.
+ * Sprawdza, czy numer wiersza @p y jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p height z funkcji @ref gamma_new.
+ * Sprawdza, czy pole zostało już stworzone, tzn. czy wartość wskaźnika
+ * @p g->board[y][x] jest różna od NULL oraz czy właścicielem pola jest gracz @p p,
+ * tzn. czy wskaźnik @p owner będący składową pola na które wskazuje wskaźnik
+ * @p g->board[y][x] jest równy @p p.
+ * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                @p width z funkcji @ref gamma_new,
+ * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                @p height z funkcji @ref gamma_new,
+ * @return Wartość @p true, jeśli współrzędne pola są poprawne oraz pole
+ * należy do gracza @p p.
+ */
 static bool player_valid_field(gamma_t *g, player_t *p, int64_t x, int64_t y) {
     if (!valid_x(g, x) || !valid_y(g, y)) {
         return false;
@@ -239,7 +308,7 @@ static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
                                         int64_t x, int64_t y) {
     player_t *owner = field_owner(f);
 
-    if (player_valid_field(g, owner, x, y) && merge_areas(f, g->board[y][x])) {
+    if (player_valid_field(g, owner, x, y) && area_merge(f, g->board[y][x])) {
         player_set_areas(owner, player_areas(owner) - 1);
     }
 }

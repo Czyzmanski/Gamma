@@ -14,7 +14,6 @@ struct field {
 
 field_t *field_new(uint32_t x, uint32_t y, player_t *owner) {
     field_t *f = malloc(sizeof(field_t));
-    //TODO: malloc check
 
     f->x = x;
     f->y = y;
