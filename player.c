@@ -5,11 +5,14 @@
 #include "player.h"
 
 struct player {
-    uint32_t number;
-    uint64_t busy_fields;
-    uint32_t areas;
-    uint32_t perimeter;
-    bool golden_possible;
+    uint32_t number;      /**< Numer gracza, liczba dodatnia niewiększa od wartości
+                           *   @p players z funkcji @ref gamma_new. */
+    uint64_t busy_fields; /**< Liczba pól zajętych przez gracza. */
+    uint32_t areas;       /**< Liczba obszarów zajętych przez gracza. */
+    uint32_t perimeter;   /**< Obwód gracza, liczba wolnych pól sąsiadujących
+                           *   z przynajmniej jednym polem gracza. */
+    bool golden_possible; /**< Wartość @p true, jeżeli gracz nie wykonał jeszcze
+                           *   złotego ruchu, a @p false w przeciwnym przypadku. */
 };
 
 player_t *player_new(uint32_t number) {
