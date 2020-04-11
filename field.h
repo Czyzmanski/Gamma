@@ -1,5 +1,8 @@
 /** @file
  * Interfejs klasy przechowującej stan pola na planszy
+ *
+ * @author Szymon Czyżmański
+ * @date 11.04.2020
  */
 
 #ifndef FIELD_H

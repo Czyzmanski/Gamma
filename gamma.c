@@ -1,5 +1,8 @@
 /** @file
  * Implementacja klasy przechowującej stan gry gamma
+ *
+ * @author Szymon Czyżmański
+ * @date 11.04.2020
  */
 
 #include <stdlib.h>

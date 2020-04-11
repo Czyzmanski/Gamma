@@ -1,6 +1,9 @@
 /**
  * @file
  * Interfejs klasy przechowującej stan gracza
+ *
+ * @author Szymon Czyżmański
+ * @date 11.04.2020
  */
 
 #ifndef PLAYER_H

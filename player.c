@@ -1,9 +1,20 @@
+/**
+ * @file
+ * Implementacja klasy przechowującej stan gracza
+ *
+ * @author Szymon Czyżmański
+ * @date 11.04.2020
+ */
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 
 #include "player.h"
 
+/**
+ * Struktura przechowująca stan gracza.
+ */
 struct player {
     uint32_t number;      /**< Numer gracza, liczba dodatnia niewiększa od wartości
                            *   @p players z funkcji @ref gamma_new. */
