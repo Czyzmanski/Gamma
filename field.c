@@ -1,3 +1,11 @@
+/**
+ * @file
+ * Implementacja klasy przechowującej stan pola na planszy
+ *
+ * @author Szymon Czyżmański
+ * @date 11.04.2020
+ */
+
 #include <stdlib.h>
 #include <stdint.h>
 
