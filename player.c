@@ -2,7 +2,7 @@
  * @file
  * Implementacja klasy przechowującej stan gracza
  *
- * @author Szymon Czyżmański
+ * @author Szymon Czyżmański 417797
  * @date 11.04.2020
  */
 
