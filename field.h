@@ -47,22 +47,22 @@ typedef enum status status_t;
  */
 field_t *field_new(uint32_t x, uint32_t y, player_t *owner);
 
-/** @brief Zwraca współrzędną @p x pola (@p x, @p y).
- * Zwraca numer kolumny @p x na którym znajduje się pole wskazywane przez @p f.
+/** @brief Podaje współrzędną @p x pola (@p x, @p y).
+ * Podaje numer kolumny @p x na którym znajduje się pole wskazywane przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Numer kolumny @p x na którym znajduje się pole wskazywane przez @p f.
  */
 uint32_t field_x(field_t *f);
 
-/** @brief Zwraca współrzędną @p y pola (@p x, @p y).
- * Zwraca numer wiersza @p y na którym znajduje się pole wskazywane przez @p f.
+/** @brief Podaje współrzędną @p y pola (@p x, @p y).
+ * Podaje numer wiersza @p y na którym znajduje się pole wskazywane przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Numer wiersza @p y na którym znajduje się pole wskazywane przez @p f.
  */
 uint32_t field_y(field_t *f);
 
-/** @brief Zwraca wskaźnik do właściciela pola.
- * Zwraca wskaźnik @p owner na strukturę gracza mającego pionek na polu
+/** @brief Podaje wskaźnik do właściciela pola.
+ * Podaje wskaźnik @p owner na strukturę gracza mającego pionek na polu
  * wskazywanym przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Wskaźnik @p owner na strukturę gracza mającego pionek na polu
@@ -81,8 +81,8 @@ player_t *field_owner(field_t *f);
  */
 void field_set_owner(field_t *f, player_t *owner);
 
-/** @brief Zwraca wskaźnik do rodzica pola.
- * Zwraca wskaźnik @p parent na strukturę pola będącego rodzicem pola
+/** @brief Podaje wskaźnik do rodzica pola.
+ * Podaje wskaźnik @p parent na strukturę pola będącego rodzicem pola
  * wskazywanego przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Wskaźnik @p parent na strukturę pola będącego rodzicem pola
@@ -99,8 +99,8 @@ field_t *field_parent(field_t *f);
  */
 void field_set_parent(field_t *f, field_t *parent);
 
-/** @brief Zwraca rangę pola.
- * Zwraca wartość @p rank pola wskazywanego przez @p f.
+/** @brief Podaje rangę pola.
+ * Podaje wartość @p rank pola wskazywanego przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Wartość @p rank pola wskazywanego przez @p f.
  */
@@ -114,8 +114,8 @@ uint32_t field_rank(field_t *f);
  */
 void field_set_rank(field_t *f, uint32_t rank);
 
-/** @brief Zwraca status pola.
- * Zwraca wartość @p status pola wskazywanego przez @p f.
+/** @brief Podaje status pola.
+ * Podaje wartość @p status pola wskazywanego przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Wartość @p status pola wskazywanego przez @p f, jedna z wartości
  * wyliczenia @ref status.

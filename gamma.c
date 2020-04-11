@@ -253,13 +253,13 @@ static player_t **unique_neighbours(gamma_t *g, uint32_t x, uint32_t y) {
     return neighbours;
 }
 
-static void neighbours_update_borders(gamma_t *g, field_t *f) {
+static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
     player_t *owner = field_owner(f);
     player_t **neighbours = unique_neighbours(g, field_x(f), field_y(f));
 
     for (uint8_t i = 0; i < NEIGHBOURS; i++) {
         if (neighbours[i] != NULL && neighbours[i] != owner) {
-            player_set_borders(neighbours[i], player_borders(neighbours[i]) - 1);
+            player_set_perimeter(neighbours[i], player_perimeter(neighbours[i]) - 1);
         }
     }
 
@@ -283,25 +283,25 @@ static uint8_t player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
     return fields;
 }
 
-static void player_update_borders(gamma_t *g, field_t *f, bool golden_move) {
+static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
     uint32_t x = field_x(f);
     uint32_t y = field_y(f);
     player_t *owner = field_owner(f);
-    uint32_t borders = player_borders(owner);
+    uint32_t perimeter = player_perimeter(owner);
 
     field_set_owner(f, NULL);
 
     if (!golden_move && player_adjacent_fields(g, owner, x, y) > 0) {
-        borders--;
+        perimeter--;
     }
 
-    borders += player_valid_free_single_field(g, owner, x - 1, y);
-    borders += player_valid_free_single_field(g, owner, x + 1, y);
-    borders += player_valid_free_single_field(g, owner, x, y - 1);
-    borders += player_valid_free_single_field(g, owner, x, y + 1);
+    perimeter += player_valid_free_single_field(g, owner, x - 1, y);
+    perimeter += player_valid_free_single_field(g, owner, x + 1, y);
+    perimeter += player_valid_free_single_field(g, owner, x, y - 1);
+    perimeter += player_valid_free_single_field(g, owner, x, y + 1);
 
     field_set_owner(f, owner);
-    player_set_borders(owner, borders);
+    player_set_perimeter(owner, perimeter);
 }
 
 static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
@@ -550,8 +550,8 @@ static void gamma_move_update(gamma_t *g, uint32_t player, uint32_t x, uint32_t 
     player_set_busy_fields(p, player_busy_fields(p) + 1);
 
     player_update_areas(g, f);
-    neighbours_update_borders(g, f);
-    player_update_borders(g, f, false);
+    neighbours_update_perimeter(g, f);
+    player_update_perimeter(g, f, false);
 }
 
 static void gamma_golden_move_update(gamma_t *g, uint32_t player,
@@ -568,14 +568,14 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
     field_set_status(f, UNCHECKED);
 
     player_update_areas(g, f);
-    player_update_borders(g, f, true);
+    player_update_perimeter(g, f, true);
     player_set_golden_possible(new_owner, false);
     player_set_busy_fields(new_owner, player_busy_fields(new_owner) + 1);
 
     old_owner_update_areas(g, old_owner, x, y);
     player_set_busy_fields(old_owner, player_busy_fields(old_owner) - 1);
-    player_set_borders(old_owner,
-                       player_borders(old_owner) -
+    player_set_perimeter(old_owner,
+                       player_perimeter(old_owner) -
                        player_adjacent_free_single_fields(g, old_owner, x, y));
 }
 
@@ -682,7 +682,7 @@ uint64_t gamma_free_fields(gamma_t *g, uint32_t player) {
             return g->width * g->height - g->busy_fields;
         }
         else {
-            return player_borders(p);
+            return player_perimeter(p);
         }
     }
 }

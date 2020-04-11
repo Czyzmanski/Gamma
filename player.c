@@ -8,18 +8,17 @@ struct player {
     uint32_t number;
     uint64_t busy_fields;
     uint32_t areas;
-    uint32_t borders;
+    uint32_t perimeter;
     bool golden_possible;
 };
 
 player_t *player_new(uint32_t number) {
     player_t *p = malloc(sizeof(player_t));
-    //TODO: check malloc
 
     p->number = number;
     p->busy_fields = 0;
     p->areas = 0;
-    p->borders = 0;
+    p->perimeter = 0;
     p->golden_possible = true;
 
     return p;
@@ -45,12 +44,12 @@ void player_set_areas(player_t *p, uint32_t areas) {
     p->areas = areas;
 }
 
-uint32_t player_borders(player_t *p) {
-    return p->borders;
+uint32_t player_perimeter(player_t *p) {
+    return p->perimeter;
 }
 
-void player_set_borders(player_t *p, uint32_t borders) {
-    p->borders = borders;
+void player_set_perimeter(player_t *p, uint32_t perimeter) {
+    p->perimeter = perimeter;
 }
 
 bool player_golden_possible(player_t *p) {
