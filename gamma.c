@@ -10,16 +10,43 @@
 #include "gamma.h"
 #include "field.h"
 
+/**
+ * Maksymalna liczba pól, z jakimi może pole sąsiadować.
+ */
 #define NEIGHBOURS 4
 
+/**
+ * Struktura przechowująca stan gry.
+ */
 struct gamma {
-    uint32_t width;
-    uint32_t height;
-    uint32_t players;
-    uint32_t areas;
-    uint32_t busy_fields;
-    field_t ***board;
-    player_t **players_arr;
+    uint32_t width;         /**< Szerokość planszy, liczba dodatnia równa wartości
+                             *   @p width z funkcji @ref gamma_new. */
+    uint32_t height;        /**< Wysokość planszy, liczba dodatnia równa wartości
+                             *   @p height z funkcji @ref gamma_new. */
+    uint32_t players;       /**< Liczba graczy, liczba dodatnia równa wartości
+                             *   @p players z funkcji @ref gamma_new. */
+    uint32_t areas;         /**< Maksymalna liczba obszarów, jakie może posiadać
+                             *   gracz, liczba dodatnia równa wartości @p areas
+                             *   z funkcji @ref gamma_new. */
+    uint32_t busy_fields;   /**< Liczba wszystkich zajętych pól na planszy. */
+    field_t ***board;       /**< Wskaźnik do tablicy o @p height wierszach
+                             *   i @p width kolumnach reprezentującej planszę
+                             *   na której rozgrywana jest gra, przechowującej
+                             *   w wierszu @p y i kolumnie @p x wskaźnik do
+                             *   struktury przechowującej stan pola (@p x, @p y)
+                             *   lub NULL, jeśli pole to nie zostało zajęte przez
+                             *   żadnego z graczy. */
+    player_t **players_arr; /**< Tablica wskaźników do struktur przechowujących
+                             *   stan graczy biorących udział w rozgrywce,
+                             *   o długości równej wartości o 1 większej niż wartość
+                             *   @p players z funkcji @ref gamma_new.
+                             *   Wartość wskaźnika @p players_arr[0] jest równa NULL,
+                             *   ponieważ nie ma gracza o numerze 0.
+                             *   Pod indeksem i, dla i dodatniego oraz niewiększego
+                             *   od wartości @p players z funkcji @ref gamma_new,
+                             *   znajduje się adres struktury przechowującej stan
+                             *   gracza o numerze i lub NULL, jeśli gracz ten jeszcze
+                             *   nie postawił żadnego pionka na którymś polu. */
 };
 
 /** @name Obszar
