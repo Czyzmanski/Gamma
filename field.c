@@ -3,13 +3,31 @@
 
 #include "field.h"
 
+/**
+ * Struktura przechowująca stan pola (@p x, @p y).
+ */
 struct field {
-    uint32_t x;
-    uint32_t y;
-    player_t *owner;
-    field_t *parent;
-    uint32_t rank;
-    status_t status;
+    uint32_t x;      /**< Numer kolumny, liczba nieujemna mniejsza od wartości
+                      *   @p width z funkcji @ref gamma_new. */
+    uint32_t y;      /**< Numer wiersza, liczba nieujemna mniejsza od wartości
+                      *   @p height z funkcji @ref gamma_new. */
+    player_t *owner; /**< Wskaźnik do właściciela pola, gracza posiadającego pionek
+                      *   na tym polu. */
+    field_t *parent; /**< Wskaźnik do rodzica, pewnego pola znajdującego się w tym
+                      *   samym obszarze co pole (@p x, @p y) lub NULL, jeśli
+                      *   pole (@p x, @p y) jest korzeniem obszaru gracza
+                      *   wskazywanego przez @p owner. Pozwala na implementację
+                      *   operacji na obszarach zajętych przez tego gracza przy
+                      *   pomocy struktury Find-Union. */
+    uint32_t rank;   /**< Ranga pola, wartość wykorzystywana przy operacji łączenia
+                      *   dwóch obszarów zajętych przez gracza wskazywanego przez
+                      *   @p owner w jeden. Pozwala na implementację operacji na
+                      *   obszarach zajętych przez tego gracza przy pomocy struktury
+                      *   Find-Union. */
+    status_t status; /**< Status pola, jedna z wartości zdefiniowanych w wyliczeniu
+                      *   @ref status. Pozwala na odróżnienie, które pola zostały
+                      *   już uwzględnione w trakcie przeszukiwania w głąb (DFS)
+                      *   w implementacji funkcji @ref gamma_golden_move. */
 };
 
 field_t *field_new(uint32_t x, uint32_t y, player_t *owner) {

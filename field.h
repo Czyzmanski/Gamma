@@ -11,7 +11,7 @@
 #include "player.h"
 
 /**
- * Struktura przechowująca stan pola.
+ * Struktura przechowująca stan pola (@p x, @p y).
  */
 typedef struct field field_t;
 
