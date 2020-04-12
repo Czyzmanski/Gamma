@@ -40,7 +40,7 @@ uint32_t player_number(player_t *p);
  */
 uint64_t player_busy_fields(player_t *p);
 
-/** @brief Przypisuje graczowi liczbę zajętych przez niego pól.
+/** @brief Aktualizuje liczbę zajętych przez gracza pól.
  * Przypisuje składowej @p busy_fields gracza wskazywanego przez @p p wartość
  * zmiennej @p busy_fields będącej paramatrem procedury.
  * @param[in,out] p           – wskaźnik na strukturę przechowującą stan gracza,
@@ -55,7 +55,7 @@ void player_set_busy_fields(player_t *p, uint64_t busy_fields);
  */
 uint32_t player_areas(player_t *p);
 
-/** @brief Przypisuje graczowi liczbę zajętych przez niego obszarów.
+/** @brief Aktualizuje liczbę zajętych przez gracza obszarów.
  * Przypisuje składowej @p areas gracza wskazywanego przez @p p wartość
  * zmiennej @p areas będącej paramatrem procedury.
  * @param[in,out] p           – wskaźnik na strukturę przechowującą stan gracza,
@@ -72,7 +72,7 @@ void player_set_areas(player_t *p, uint32_t areas);
  */
 uint32_t player_perimeter(player_t *p);
 
-/** @brief Przypisuje graczowi obwód.
+/** @brief Aktualizuje obwód gracza.
  * Przypisuje składowej @p perimeter gracza wskazywanego przez @p p wartość
  * zmiennej @p perimeter będącej paramatrem procedury.
  * @param[in,out] p           – wskaźnik na strukturę przechowującą stan gracza,
@@ -91,7 +91,7 @@ void player_set_perimeter(player_t *p, uint32_t perimeter);
  */
 bool player_golden_possible(player_t *p);
 
-/** @brief Przypisuje graczowi możliwość wykonania złotego ruchu.
+/** @brief Aktualizuje możliwość wykonania złotego ruchu przez gracza.
  * Przypisuje składowej @p golden_possible gracza wskazywanego przez @p p
  * wartość zminnej @p golden_possible będącej parametrem procedury.
  * @param[in,out] p           – wskaźnik na strukturę przechowującą stan gracza,

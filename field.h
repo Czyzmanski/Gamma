@@ -73,7 +73,7 @@ uint32_t field_y(field_t *f);
  */
 player_t *field_owner(field_t *f);
 
-/** @brief Przypisuje polu właściciela.
+/** @brief Aktualizuje właściciela pola.
  * Przypisuje polu właściciela, czyli gracza, którego pionek stoi na polu
  * wskazywanym przez @p f.
  * Przypisuje wskaźnikowi @p owner, będącego składową struktury pola wskazywanej
@@ -93,7 +93,7 @@ void field_set_owner(field_t *f, player_t *owner);
  */
 field_t *field_parent(field_t *f);
 
-/** @brief Przypisuje polu rodzica.
+/** @brief Aktualizuje rodzica pola.
  * Przypisuje wskaźnikowi @p parent, będącego składową struktury pola wskazywanej
  * przez @p f, wartość wskaźnika @p owner będącego parametrem procedury.
  * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola,
@@ -109,7 +109,7 @@ void field_set_parent(field_t *f, field_t *parent);
  */
 uint32_t field_rank(field_t *f);
 
-/** @brief Przypisuje polu rangę.
+/** @brief Aktualizuje rangę pola.
  * Przypisuje składowej @p rank pola wskazywanego przez @p f wartość zmiennej
  * @p rank będącej paramatrem procedury.
  * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola,
@@ -125,7 +125,7 @@ void field_set_rank(field_t *f, uint32_t rank);
  */
 status_t field_status(field_t *f);
 
-/** @brief Przypisuje polu status.
+/** @brief Aktualizuje status pola.
  * Przypisuje składowej @p status pola wskazywanego przez @p f wartość zmiennej
  * @p status będącej paramatrem procedury.
  * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola,

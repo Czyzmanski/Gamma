@@ -9,6 +9,7 @@
 
 #include "gamma.h"
 #include "field.h"
+#include "mem_alloc_check.h"
 
 /**
  * Maksymalna liczba pól, z jakimi może pole sąsiadować.
@@ -307,7 +308,7 @@ static uint8_t player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
 /** @name Gracz
  * Sprawdzanie czy gracz lub związany z nim element spełnia określony predykat.
  * Zmiana stanu gracza lub związanych z nim elementów przy wykonywaniu ruchów
- * przez tego lub innego gracza.
+ * przez tego gracza podczas zwykłego ruchu lub innego gracza podczas złotego ruchu.
  */
 ///@{
 
@@ -324,6 +325,17 @@ static inline bool valid_player(gamma_t *g, int64_t player) {
     return 1 <= player && player <= g->players;
 }
 
+/** @brief Aktualizuje obwód gracza po wykonaniu przez niego ruchu.
+ * Aktualizuje obwód gracza będącego właścicielem pola wskazywanego przez @p f,
+ * po wykonaniu przez niego ruchu na pole wskazywane przez @p f.
+ * @param[in] g           – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] f           – wskaźnik na strukturę przechowującą stan pola właśnie
+ *                          zajętego przez gracza,
+ * @param[in] golden_move – wartość @p true, jeżeli funkcja została wywołana
+ *                          w wyniku wykonania złotego ruchu przez gracza,
+ *                          a @p false, jeżeli funkcja została wywołana w wyniku
+ *                          wykonania zwykłego ruchu przez gracza.
+ */
 static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
     uint32_t x = field_x(f);
     uint32_t y = field_y(f);
@@ -345,6 +357,23 @@ static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
     player_set_perimeter(owner, perimeter);
 }
 
+/** @brief Łączy obszary gracza po wykonaniu przez niego ruchu na pole
+ * wskazywane przez @p f.
+ * Łączy obszar gracza, będącego właścicielem pola wskazywanego przez @p f,
+ * do którego należy pole wskazywane przez @p f, z obszarem tego gracza,
+ * do którego należy pole (@p x, @p y).
+ * Zmniejsza o 1 liczbę obszarów gracza, jeżeli pole (@p x, @p y) jest poprawne 
+ * i należy do tego gracza oraz połączono obszary.
+ * Nic nie robi, jeżeli pole (@p x, @p y) jest niepoprawne lub nie należy do gracza,
+ * lub oba pola należą do tego samego obszaru.
+ * @param[in] g           – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] f           – wskaźnik na strukturę przechowującą stan pola właśnie
+ *                          zajętego przez gracza,
+ * @param[in] golden_move – wartość @p true, jeżeli funkcja została wywołana
+ *                          w wyniku wykonania złotego ruchu przez gracza,
+ *                          a @p false, jeżeli funkcja została wywołana w wyniku
+ *                          wykonania zwykłego ruchu przez gracza.
+ */
 static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
                                         int64_t x, int64_t y) {
     player_t *owner = field_owner(f);
@@ -354,7 +383,16 @@ static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
     }
 }
 
-static void player_update_areas(gamma_t *g, field_t *f) {
+/** @brief Modyfikuje obszary gracza po wykonaniu przez niego ruchu na pole
+ * wskazywane przez @p f.
+ * Tworzy nowy obszar składający się tylko z pola wskazywanego przez @p f,
+ * po czym próbuje łączyć ten obszar z sąsiednimi obszarami należącymi do
+ * właściciela tego pola, jeżeli takie istnieją.
+ * @param[in] g           – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] f           – wskaźnik na strukturę przechowującą stan pola właśnie
+ *                          zajętego przez gracza.
+ */
+static void player_modify_areas(gamma_t *g, field_t *f) {
     area_new(f);
 
     uint32_t x = field_x(f);
@@ -503,7 +541,7 @@ static player_t **unique_neighbours(gamma_t *g, uint32_t x, uint32_t y) {
 static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
     player_t *owner = field_owner(f);
     player_t **neighbours = unique_neighbours(g, field_x(f), field_y(f));
-    //TODO: check allocation
+    check_for_successful_alloc(neighbours);
 
     for (uint8_t i = 0; i < MAX_NEIGHBOURS; i++) {
         if (neighbours[i] != NULL && neighbours[i] != owner) {
@@ -742,7 +780,7 @@ static void gamma_move_update(gamma_t *g, uint32_t player, uint32_t x, uint32_t 
     g->busy_fields++;
     player_set_busy_fields(p, player_busy_fields(p) + 1);
 
-    player_update_areas(g, f);
+    player_modify_areas(g, f);
     neighbours_update_perimeter(g, f);
     player_update_perimeter(g, f, false);
 }
@@ -760,7 +798,7 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
     field_set_owner(f, new_owner);
     field_set_status(f, UNCHECKED);
 
-    player_update_areas(g, f);
+    player_modify_areas(g, f);
     player_update_perimeter(g, f, true);
     player_set_golden_possible(new_owner, false);
     player_set_busy_fields(new_owner, player_busy_fields(new_owner) + 1);
