@@ -13,7 +13,7 @@
 /**
  * Maksymalna liczba pól, z jakimi może pole sąsiadować.
  */
-#define NEIGHBOURS 4
+#define MAX_NEIGHBOURS 4
 
 /**
  * Struktura przechowująca stan gry.
@@ -51,7 +51,7 @@ struct gamma {
 
 /** @name Obszar
  * Wykorzystanie struktury Find-Union z kompresją ścieżki oraz łączeniem według
- * rangi do efektywnego utrzymania informacji o obszarach każdego z graczy.
+ * rangi do efektywnego utrzymania informacji o obszarach zajętych przez gracza.
  */
 ///@{
 
@@ -129,25 +129,19 @@ static bool area_merge(field_t *f1, field_t *f2) {
 
 ///@}
 
-/** @brief Sprawdza poprawność numeru gracza.
- * Sprawdza, czy numer gracza @p player jest liczbą całkowitą dodatnią
- * nie większą od wartości @p players z funkcji @ref gamma_new.
- * @param[in] g      – wskaźnik na strukturę przechowującą stan gry,
- * @param[in] player – numer gracza, liczba dodatnia niewiększa od wartości
- *                     @p players z funkcji @ref gamma_new.
- * @return Wartość @p true, jeśli numer gracza jest poprawny,
- * a @p false w przeciwnym przypadku.
+/** @name Pole
+ * Sprawdzanie czy pole lub powiązany z nim element spełnia określony predykat.
+ * Zliczanie pól spełniających określony predykat.
+ * Polem poprawnym jest pole, którego współrzędne są poprawne.
  */
-static inline bool valid_player(gamma_t *g, int64_t player) {
-    return 1 <= player && player <= g->players;
-}
+///@{
 
 /** @brief Sprawdza poprawność numeru kolumny.
  * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
  * mniejszą od wartości @p width z funkcji @ref gamma_new
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
- *                @p width z funkcji @ref gamma_new,
+ *                @p width z funkcji @ref gamma_new.
  * @return Wartość @p true, jeśli numer kolumny jest poprawny,
  * a @p false w przeciwnym przypadku.
  */
@@ -160,7 +154,7 @@ static inline bool valid_x(gamma_t *g, int64_t x) {
  * mniejszą od wartości @p height z funkcji @ref gamma_new.
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
- *                @p height z funkcji @ref gamma_new,
+ *                @p height z funkcji @ref gamma_new.
  * @return Wartość @p true, jeśli numer wiersza jest poprawny,
  * a @p false w przeciwnym przypadku.
  */
@@ -174,20 +168,38 @@ static inline bool valid_y(gamma_t *g, int64_t y) {
  * Sprawdza, czy numer wiersza @p y jest liczbą całkowitą nieujemną
  * mniejszą od wartości @p height z funkcji @ref gamma_new.
  * Sprawdza, czy pole nie zostało jeszcze stworzone, tzn. czy wartość wskaźnika
- * @p g->board[y][x] jest równa NULL, lub, w przeciwnym razie, czy pole nie ma
- * przypisanego właściciela, tzn. czy wskaźnik @p owner będący składową pola
- * na które wskazuje wskaźnik @p g->board[y][x] jest równy NULL.
+ * @p g->board[y][x] jest równa NULL.
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
  *                @p width z funkcji @ref gamma_new,
  * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
- *                @p height z funkcji @ref gamma_new,
+ *                @p height z funkcji @ref gamma_new.
  * @return Wartość @p true, jeśli współrzędne pola są poprawne oraz pole
  * nie jest zajęte przez pewnego gracza, a @p false w przeciwnym przypadku.
  */
 static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
     return valid_x(g, x) && valid_y(g, y)
            && (g->board[y][x] == NULL || field_owner(g->board[y][x]) == NULL);
+}
+
+/** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i zajęte.
+ * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p width z funkcji @ref gamma_new.
+ * Sprawdza, czy numer wiersza @p y jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p height z funkcji @ref gamma_new.
+ * Sprawdza, czy pole zostało już stworzone, tzn. czy wartość wskaźnika
+ * @p g->board[y][x] jest różna od NULL.
+ * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                @p width z funkcji @ref gamma_new,
+ * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                @p height z funkcji @ref gamma_new.
+ * @return Wartość @p true, jeśli współrzędne pola są poprawne oraz pole
+ * jest zajęte przez pewnego gracza, a @p false w przeciwnym przypadku.
+ */
+static inline bool valid_busy_field(gamma_t *g, int64_t x, int64_t y) {
+    return valid_x(g, x) && valid_y(g, y)
+           && g->board[y][x] != NULL && field_owner(g->board[y][x]) != NULL;
 }
 
 /** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i należy do gracza @p p.
@@ -203,20 +215,27 @@ static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
  *                @p width z funkcji @ref gamma_new,
  * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
- *                @p height z funkcji @ref gamma_new,
+ *                @p height z funkcji @ref gamma_new.
  * @return Wartość @p true, jeśli współrzędne pola są poprawne oraz pole
  * należy do gracza @p p.
  */
-static bool player_valid_field(gamma_t *g, player_t *p, int64_t x, int64_t y) {
-    if (!valid_x(g, x) || !valid_y(g, y)) {
-        return false;
-    }
-    else {
-        field_t *f = g->board[y][x];
-        return f != NULL && field_owner(f) == p;
-    }
+static inline bool player_valid_field(gamma_t *g, player_t *p,
+                                      int64_t x, int64_t y) {
+    return valid_x(g, x) && valid_y(g, y)
+           && g->board[y][x] != NULL && field_owner(g->board[y][x]) == p;
 }
 
+/** @brief Zlicza sąsiednie pola zajęte przez danego gracza.
+ * Zlicza pola sąsiadujące z polem (@p x, @p y), które zostały zajęte przez gracza
+ * wskazywanego przez @p p.
+ * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                @p width z funkcji @ref gamma_new,
+ * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                @p height z funkcji @ref gamma_new,
+ * @return Liczba pól sąsiadujących z polem (@p x, @p y), które zostały zajęte
+ * przez gracza wskazywanego przez @p p.
+ */
 static uint8_t player_adjacent_fields(gamma_t *g, player_t *p,
                                       uint32_t x, uint32_t y) {
     uint8_t fields = 0;
@@ -229,78 +248,48 @@ static uint8_t player_adjacent_fields(gamma_t *g, player_t *p,
     return fields;
 }
 
-static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
-    if (!valid_free_field(g, x, y)) {
-        return false;
-    }
-    else if (p == NULL || player_areas(p) < g->areas) {
-        return true;
-    }
-    else {
-        return player_adjacent_fields(g, p, x, y) > 0;
-    }
-}
-
-static bool unique_neighbour(player_t *p, player_t **neighbours, uint8_t added) {
-    uint8_t i = 0;
-
-    while (i < added && p != neighbours[i]) {
-        i++;
-    }
-
-    return i == added;
-}
-
-static bool neighbour_valid_unique_field(gamma_t *g, int64_t x, int64_t y,
-                                         player_t **neighbours, uint8_t added) {
-    if (!valid_x(g, x) || !valid_y(g, y)) {
-        return false;
-    }
-    else {
-        field_t *f = g->board[y][x];
-        return f != NULL && unique_neighbour(field_owner(f), neighbours, added);
-    }
-}
-
-static uint8_t add_neighbour_if_unique(gamma_t *g, int64_t x, int64_t y,
-                                       player_t **neighbours, uint8_t added) {
-    if (neighbour_valid_unique_field(g, x, y, neighbours, added)) {
-        neighbours[added] = field_owner(g->board[y][x]);
-        added++;
-    }
-    return added;
-}
-
-static player_t **unique_neighbours(gamma_t *g, uint32_t x, uint32_t y) {
-    uint8_t added = 0;
-    player_t **neighbours = calloc(NEIGHBOURS, sizeof(player_t *));
-
-    added = add_neighbour_if_unique(g, x - 1, y, neighbours, added);
-    added = add_neighbour_if_unique(g, x + 1, y, neighbours, added);
-    added = add_neighbour_if_unique(g, x, y - 1, neighbours, added);
-    add_neighbour_if_unique(g, x, y + 1, neighbours, added);
-
-    return neighbours;
-}
-
-static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
-    player_t *owner = field_owner(f);
-    player_t **neighbours = unique_neighbours(g, field_x(f), field_y(f));
-
-    for (uint8_t i = 0; i < NEIGHBOURS; i++) {
-        if (neighbours[i] != NULL && neighbours[i] != owner) {
-            player_set_perimeter(neighbours[i], player_perimeter(neighbours[i]) - 1);
-        }
-    }
-
-    free(neighbours);
-}
-
+/** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne, wolne i nie sąsiaduje
+ * z żadnym polem zajętym przez gracza wskazywanego przez @p owner.
+ * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p width z funkcji @ref gamma_new.
+ * Sprawdza, czy numer wiersza @p y jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p height z funkcji @ref gamma_new.
+ * Sprawdza, czy pole nie zostało jeszcze stworzone, tzn. czy wartość wskaźnika
+ * @p g->board[y][x] jest równa NULL, lub, w przeciwnym razie, czy pole nie ma
+ * przypisanego właściciela, tzn. czy wskaźnik @p owner będący składową pola
+ * na które wskazuje wskaźnik @p g->board[y][x] jest równy NULL.
+ * Sprawdza, czy liczba pól sąsiadujących z polem (@p x, @p y), zajętych przez
+ * gracza wskazywanego przez @p owner jest równa 0.
+ * @param[in] g     – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] owner – wskaźnik na strukturę przechowującą stan gracza,
+ * @param[in] x     – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                    @p width z funkcji @ref gamma_new,
+ * @param[in] y     – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                    @p height z funkcji @ref gamma_new.
+ * @return Wartość @p true, jezeli pole (@p x, @p y) jest poprawne, wolne
+ * i nie sąsiaduje z żadnym polem zajętym przez gracza wskazywanego przez @p owner,
+ * a @p false w przeciwnym przypadku.
+ */
 static inline bool player_valid_free_single_field(gamma_t *g, player_t *owner,
                                                   int64_t x, int64_t y) {
     return valid_free_field(g, x, y) && player_adjacent_fields(g, owner, x, y) == 0;
 }
 
+/** @brief Zlicza sąsiednie, wolne pola, nie sąsiadujące z żadnym polem zajętym
+ * przez danego gracza.
+ * Zlicza pola sąsiadujące z polem (@p x, @p y), które nie zostały zajęte przez
+ * żadnego gracza i które nie sąsiadują z żadnym polem zajętym przez gracza
+ * wskazywanego przez @p owner.
+ * @param[in] g     – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] owner – wskaźnik na strukturę przechowującą stan gracza,
+ * @param[in] x     – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                    @p width z funkcji @ref gamma_new,
+ * @param[in] y     – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                    @p height z funkcji @ref gamma_new.
+ * @return Liczba pól sąsiadujących z polem (@p x, @p y), które nie zostały zajęte
+ * przez żadnego gracza i które nie sąsiadują z żadnym polem zajętym przez gracza
+ * wskazywanego przez @p owner.
+ */
 static uint8_t player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
                                                   uint32_t x, uint32_t y) {
     uint8_t fields = 0;
@@ -311,6 +300,28 @@ static uint8_t player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
     fields += player_valid_free_single_field(g, owner, x, y + 1);
 
     return fields;
+}
+
+///@}
+
+/** @name Gracz
+ * Sprawdzanie czy gracz lub związany z nim element spełnia określony predykat.
+ * Zmiana stanu gracza lub związanych z nim elementów przy wykonywaniu ruchów
+ * przez tego lub innego gracza.
+ */
+///@{
+
+/** @brief Sprawdza poprawność numeru gracza.
+ * Sprawdza, czy numer gracza @p player jest liczbą całkowitą dodatnią
+ * nie większą od wartości @p players z funkcji @ref gamma_new.
+ * @param[in] g      – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] player – numer gracza, liczba dodatnia niewiększa od wartości
+ *                     @p players z funkcji @ref gamma_new.
+ * @return Wartość @p true, jeśli numer gracza jest poprawny,
+ * a @p false w przeciwnym przypadku.
+ */
+static inline bool valid_player(gamma_t *g, int64_t player) {
+    return 1 <= player && player <= g->players;
 }
 
 static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
@@ -355,8 +366,166 @@ static void player_update_areas(gamma_t *g, field_t *f) {
     player_merge_adjacent_areas(g, f, x, y + 1);
 }
 
-static inline bool valid_busy_field(gamma_t *g, int64_t x, int64_t y) {
-    return valid_x(g, x) && valid_y(g, y) && g->board[y][x] != NULL;
+///@}
+
+/** @name Sąsiedzi
+ * Tworzenie zbioru graczy @p neighbours posiadających co najmniej jedno pole
+ * sąsiadujące z polem, na który stawiany jest pionek.
+ * Aktualizacja obwodów graczy należących do utworzonego zbioru reprezentowanego
+ * przez tablicę @p neighbours z funkcji @ref unique_neighbours i przekazywaną
+ * do pozostałych funkcji z tej grupy.
+ */
+///@{
+
+/** @brief Sprawdza, czy gracz nie został jeszcze dodany do zbioru @p neighbours.
+ * Sprawdza, czy adres struktury gracza wskazywanej przez @p p nie został jeszcze
+ * dodany do tablicy @p neighbours, przechowującej niepowtarzające się adresy
+ * struktur graczy zajmujących co najmniej jedno pole w sąsiedztwie pewnego pola,
+ * na które został postawiony pionek.
+ * @param[in] p          – wskaźnik na strukturę przechowującą stan gracza,
+ * @param[in] neighbours – tablica wskaźników na dodanych już graczy,
+ * @param[in] added      – liczba dodanych już graczy.
+ * @return Wartość @p true, jeśli wskaźnik @p p nie został jeszcze dodany
+ * do tablicy @p neighbours, a @p false w przeciwnym przypadku.
+ */
+static bool unique_neighbour(player_t *p, player_t **neighbours, uint8_t added) {
+    uint8_t i = 0;
+
+    while (i < added && p != neighbours[i]) {
+        i++;
+    }
+
+    return i == added;
+}
+
+/** @brief Sprawdza, czy pole (@p x, @p y) jest zajęte i należy do gracza, który
+ * nie został jeszcze dodany do zbioru @p neighbours.
+ * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p width z funkcji @ref gamma_new.
+ * Sprawdza, czy numer wiersza @p y jest liczbą całkowitą nieujemną
+ * mniejszą od wartości @p height z funkcji @ref gamma_new.
+ * Sprawdza, czy pole zostało już stworzone, tzn. czy wartość wskaźnika
+ * @p g->board[y][x] jest różna od NULL.
+ * Sprawdza, czy wskaźnik na gracza będącego właścicielem pola (@p x, @p y)
+ * nie został jeszcze dodany do tablicy @p neighbours.
+ * @param[in] g          – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x          – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                         @p width z funkcji @ref gamma_new,
+ * @param[in] y          – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                         @p height z funkcji @ref gamma_new,
+ * @param[in] neighbours – tablica wskaźników na dodanych już graczy,
+ * @param[in] added      – liczba dodanych już graczy.
+ * @return Wartość @p true, jeśli pole (@p x, @p y) jest poprawne oraz jest zajęte
+ * przez gracza, którego adres nie został jeszcze dodany do tablicy @p neighbours,
+ * a @p false w przeciwnym przypadku.
+ */
+static bool neighbour_valid_unique_field(gamma_t *g, int64_t x, int64_t y,
+                                         player_t **neighbours, uint8_t added) {
+    if (!valid_x(g, x) || !valid_y(g, y)) {
+        return false;
+    }
+    else {
+        field_t *f = g->board[y][x];
+        return f != NULL && unique_neighbour(field_owner(f), neighbours, added);
+    }
+}
+
+/** @brief Dodaje adres gracz posiadającego pionek na polu (@p x, @p y), jeżeli
+ * nie został on jeszcze dodany do zbioru @p neighbours.
+ * Sprawdza, czy pole (@p x, @p y) jest poprawne i zajęte oraz należy do gracza,
+ * który nie został jeszcze dodany do zbioru @p neighbours. Jeżeli tak,
+ * to dodaje adres gracza posiadającego pionek na polu (@p x, @p y) do tablicy
+ * @p neighbours i zwiększa liczbę @p added dodanych adresów do tej tablicy o 1.
+ * Zwraca wartość zmiennej @p added.
+ * @param[in] g              – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x              – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                             @p width z funkcji @ref gamma_new,
+ * @param[in] y              – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                             @p height z funkcji @ref gamma_new,
+ * @param[in,out] neighbours – tablica wskaźników na dodanych już graczy,
+ * @param[in,out] added      – liczba dodanych już graczy.
+ * @return Wartość zmiennej @p added, przechowującej liczbę dodanych adresów graczy
+ * do tablicy @p neighbours.
+ */
+static uint8_t add_neighbour_if_unique(gamma_t *g, int64_t x, int64_t y,
+                                       player_t **neighbours, uint8_t added) {
+    if (neighbour_valid_unique_field(g, x, y, neighbours, added)) {
+        neighbours[added] = field_owner(g->board[y][x]);
+        added++;
+    }
+    return added;
+}
+
+/** @brief Tworzy zbiór graczy posiadających pionek na co najmniej jednym z pól
+ * sąsiadujących z polem (@p x, @p y).
+ * Alokuje pamięć na tablicę o długości @p MAX_NEIGHBOURS wskaźników do struktur
+ * przechowujących stany graczy posiadających pionek na co najmniej jednym z pól
+ * sąsiadujących z polem (@p x, @p y). Funkcja wywołująca musi ją zwolnić.
+ * Inicjuje każdą z komórek tej tablicy wartością NULL, tak, aby reprezentowała
+ * zbiór pusty.
+ * Dodaje niepowtarzające się adresy struktur przechowujących stany takich graczy
+ * do tej tablicy.
+ * @param[in] g              – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x              – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                             @p width z funkcji @ref gamma_new,
+ * @param[in] y              – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                             @p height z funkcji @ref gamma_new,
+ * @return Wskaźnik na tablicę @p neighbours reprezentującą zbiór graczy
+ * posiadających pionek na co najmniej jednym z pól sąsiadujących
+ * z polem (@p x, @p y) lub NULL, jeśli nie udało się zaalokować pamięci.
+ */
+static player_t **unique_neighbours(gamma_t *g, uint32_t x, uint32_t y) {
+    uint8_t added = 0;
+    player_t **neighbours = calloc(MAX_NEIGHBOURS, sizeof(player_t *));
+
+    if (neighbours != NULL) {
+        added = add_neighbour_if_unique(g, x - 1, y, neighbours, added);
+        added = add_neighbour_if_unique(g, x + 1, y, neighbours, added);
+        added = add_neighbour_if_unique(g, x, y - 1, neighbours, added);
+        add_neighbour_if_unique(g, x, y + 1, neighbours, added);
+    }
+
+    return neighbours;
+}
+
+/** @brief Zmniejsza o 1 obwód każdego gracza posiadającego pionek na co namniej
+ * jednym polu sąsiadującym z polem wskazywanym przez @p f.
+ * Wywołuje funkcję @ref unique_neighbours tworzącą zbiór graczy posiadających
+ * pionek na co najmniej jednym polu sąsiadującym z polem wskazywanym przez @p f,
+ * które było dotąd wolne i na którym postawiono właśnie pionek, reprezentowanym
+ * przez tablicę wskaźników @p neighbours.
+ * Zmniejsza o 1 wartość składowej @p perimeter każdego z graczy, którego adres
+ * został dodany do tablicy @p neighbours.
+ * Zwalnia tablicę @p neighbours.
+ * @param[in] g              – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] f              – wskaźnik na strukturę przechowującą stan pola.
+ */
+static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
+    player_t *owner = field_owner(f);
+    player_t **neighbours = unique_neighbours(g, field_x(f), field_y(f));
+    //TODO: check allocation
+
+    for (uint8_t i = 0; i < MAX_NEIGHBOURS; i++) {
+        if (neighbours[i] != NULL && neighbours[i] != owner) {
+            player_set_perimeter(neighbours[i], player_perimeter(neighbours[i]) - 1);
+        }
+    }
+
+    free(neighbours);
+}
+
+///@}
+
+static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
+    if (!valid_free_field(g, x, y)) {
+        return false;
+    }
+    else if (p == NULL || player_areas(p) < g->areas) {
+        return true;
+    }
+    else {
+        return player_adjacent_fields(g, p, x, y) > 0;
+    }
 }
 
 static bool player_golden_move_legal(gamma_t *g, player_t *p,
@@ -375,14 +544,9 @@ static bool player_golden_move_legal(gamma_t *g, player_t *p,
     }
 }
 
-static inline bool player_valid_search_field(gamma_t *g, player_t *owner,
-                                             int64_t x, int64_t y) {
-    return valid_busy_field(g, x, y) && field_owner(g->board[y][x]) == owner;
-}
-
 static bool area_search(gamma_t *g, player_t *owner,
                         int64_t x, int64_t y, status_t desired) {
-    if (!player_valid_search_field(g, owner, x, y)) {
+    if (!player_valid_field(g, owner, x, y)) {
         return false;
     }
     else if (field_status(g->board[y][x]) == desired) {
@@ -432,7 +596,7 @@ static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
 
 static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
                                         int64_t x, int64_t y, field_t *parent) {
-    if (player_valid_search_field(g, owner, x, y)
+    if (player_valid_field(g, owner, x, y)
         && field_status(g->board[y][x]) != MODIFIED) {
 
         field_t *f = g->board[y][x];
@@ -450,7 +614,7 @@ static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
 
 static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y, uint32_t areas) {
-    if (player_valid_search_field(g, old_owner, x, y)) {
+    if (player_valid_field(g, old_owner, x, y)) {
         if (field_status(g->board[y][x]) != MODIFIED) {
             areas++;
 
@@ -465,7 +629,6 @@ static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
             area_update_parent_and_rank(g, old_owner, x, y + 1, root);
         }
     }
-
     return areas;
 }
 
@@ -605,8 +768,8 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
     old_owner_update_areas(g, old_owner, x, y);
     player_set_busy_fields(old_owner, player_busy_fields(old_owner) - 1);
     player_set_perimeter(old_owner,
-                       player_perimeter(old_owner) -
-                       player_adjacent_free_single_fields(g, old_owner, x, y));
+                         player_perimeter(old_owner) -
+                         player_adjacent_free_single_fields(g, old_owner, x, y));
 }
 
 gamma_t *gamma_new(uint32_t width, uint32_t height,

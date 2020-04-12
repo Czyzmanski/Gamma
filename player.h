@@ -1,5 +1,4 @@
-/**
- * @file
+/** @file
  * Interfejs klasy przechowującej stan gracza
  *
  * @author Szymon Czyżmański 417797

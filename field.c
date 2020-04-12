@@ -1,5 +1,4 @@
-/**
- * @file
+/** @file
  * Implementacja klasy przechowującej stan pola na planszy
  *
  * @author Szymon Czyżmański
