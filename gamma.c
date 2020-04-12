@@ -325,6 +325,23 @@ static inline bool valid_player(gamma_t *g, int64_t player) {
     return 1 <= player && player <= g->players;
 }
 
+/** Dodaje gracza, jeśli ten nie postawił jeszcze żadnego pionka.
+ * Jeśli struktura przechowująca stan gracza o numerze @p player nie została
+ * jeszcze stworzona, ponieważ gracz ten nie postawił jeszcze żadnego pionka,
+ * alokuje pamięć na tę strukturę i zapisuje jej adres w pamięci w tablicy
+ * @p players_arr pod indeksem @p player.
+ * Nic nie robi, jeśli taka struktura została już stworzona.
+ * @param[in,out] g  – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] player – numer gracza, liczba dodatnia niewiększa od wartości
+ *                     @p players z funkcji @ref gamma_new.
+ */
+static inline void gamma_add_player(gamma_t *g, uint32_t player) {
+    if (g->players_arr[player] == NULL) {
+        g->players_arr[player] = player_new(player);
+        check_for_successful_alloc(g->players_arr[player]);
+    }
+}
+
 /** @brief Aktualizuje obwód gracza po wykonaniu przez niego ruchu.
  * Aktualizuje obwód gracza będącego właścicielem pola wskazywanego przez @p f,
  * po wykonaniu przez niego ruchu na pole wskazywane przez @p f.
@@ -554,6 +571,27 @@ static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
 
 ///@}
 
+/** @name Ruch
+ * Sprawdzenie czy dany ruch może zostać przez gracza wykonany oraz realizacja
+ * ruchu gracza.
+ */
+///@{
+
+/** @brief Sprawdza, czy gracz może wykonać ruch.
+ * Sprawdza, czy gracz wskazywany przez @p p może postawić pionek
+ * na polu (@p x, @p y).
+ * Sprawdza, czy pole (@p x, @p y) jest poprawne oraz wolne.
+ * Sprawdza, czy wykonanie ruchu nie przekroczy maksymalnej dopuszczalnej liczby
+ * obszarów zajętych przez jednego gracza.
+ * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] p – wskaźnik na strukturę przechowującą stan gracza,
+ * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości @p width
+ *                z funkcji @ref gamma_new,
+ * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości @p height
+ *                z funkcji @ref gamma_new.
+ * @return Wartość @p true, jeżeli gracz wskazywany przez @p p może postawić
+ * pionek na polu (@p x, @p y), a @p false w przeciwnym przypadku.
+ */
 static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
     if (!valid_free_field(g, x, y)) {
         return false;
@@ -566,22 +604,63 @@ static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
     }
 }
 
-static bool player_golden_move_legal(gamma_t *g, player_t *p,
-                                     uint32_t x, uint32_t y) {
-    if (p == NULL) {
-        return true;
-    }
-    else if (field_owner(g->board[y][x]) == p) {
-        return false;
-    }
-    else if (player_areas(p) < g->areas) {
-        return true;
-    }
-    else {
-        return player_adjacent_fields(g, p, x, y) > 0;
-    }
+/** @brief Wykonuje ruch.
+ * Ustawia pionek gracza @p player na polu (@p x, @p y).
+ * @param[in,out] g   – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] player  – numer gracza, liczba dodatnia niewiększa od wartości
+ *                      @p players z funkcji @ref gamma_new,
+ * @param[in] x       – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                      @p width z funkcji @ref gamma_new,
+ * @param[in] y       – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                      @p height z funkcji @ref gamma_new.
+ */
+static void gamma_move_update(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
+    gamma_add_player(g, player);
+
+    g->board[y][x] = field_new(x, y, g->players_arr[player]);
+    check_for_successful_alloc(g->board[y][x]);
+
+    player_t *p = g->players_arr[player];
+    field_t *f = g->board[y][x];
+
+    g->busy_fields++;
+    player_set_busy_fields(p, player_busy_fields(p) + 1);
+
+    player_modify_areas(g, f);
+    neighbours_update_perimeter(g, f);
+    player_update_perimeter(g, f, false);
 }
 
+///@}
+
+/** @name Złoty ruch
+ * Sprawdzenie czy złoty ruch może zostać wykonany zarówno ze strony gracza,
+ * który stawia swój pionek na polu zajętym przez przeciwnika, nazywanym
+ * ofiarą (@p victim), jak i ze strony ofiary.
+ * Implementacja algorytmu przeszukiwania w głąb (DFS), wykorzystywanego
+ * do sprawdzenia, czy usunięcie pola nie zwiększy liczby obszarów zajętych
+ * przez ofiarę ponad dopuszczalny limit.
+ */
+///@{
+
+/** @brief Wykonuje przeszukiwanie w głąb (DFS) obszaru zajętego przez gracza.
+ * Wykonuje przeszukiwanie w głąb (DFS) obszaru zajętego przez gracza wskazywanego
+ * przez @p owner, zaczynając od pola (@p x, @p y) i ustawiając status każdego
+ * odwiedzonego pola w tym obszarze na wartość @p desired.
+ * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] owner      – wskaźnik na strukturę przechowującą stan gracza,
+ *                         będącego właścicielem pola (@p x, @p y),
+ * @param[in] x          – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                         @p width z funkcji @ref gamma_new,
+ * @param[in] y          – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                         @p height z funkcji @ref gamma_new,
+ * @param[in] desired    – status na jaki ma się zmienić status każdego
+ *                         odwiedzonego pola, jedna z wartości zdefiniowanych
+ *                         w wyliczeniu @ref status.
+ * @return Wartość @p true, jeżeli pole (@p x, @p y) jest poprawne i należy do
+ * gracza wskazywanego przez @p owner oraz w momencie wywołania funkcji nie miało
+ * jeszcze żądanego statusu, a @p false w przeciwnym przypadku.
+ */
 static bool area_search(gamma_t *g, player_t *owner,
                         int64_t x, int64_t y, status_t desired) {
     if (!player_valid_field(g, owner, x, y)) {
@@ -602,6 +681,19 @@ static bool area_search(gamma_t *g, player_t *owner,
     }
 }
 
+/** @brief Daje liczbę obszarów zajętych przez gracza po utracie pola (@p x, @p y).
+ * Oblicza, ile obszarów będzie zajmować gracz wskazywany przez @p victim
+ * po utracie pola (@p x, @p y).
+ * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] victim     – wskaźnik na strukturę przechowującą stan gracza,
+ *                         będącego właścicielem pola (@p x, @p y),
+ * @param[in] x          – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                         @p width z funkcji @ref gamma_new,
+ * @param[in] y          – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                         @p height z funkcji @ref gamma_new.
+ * @return Liczba obszarów, jakie będzie zajmować gracz wskazywany przez @p victim
+ * po utracie pola (@p x, @p y).
+ */
 static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
                                  uint32_t x, uint32_t y) {
     field_set_status(g->board[y][x], COUNTED);
@@ -616,6 +708,25 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
     return areas;
 }
 
+/** @brief Sprawdza, czy złoty ruch jest legalny ze strony gracza, który traci pole.
+ * Sprawdza, czy złoty ruch jest legalny ze strony gracza, który traci pionek
+ * z pola (@p x, @p y).
+ * Zakłada, że pole (@p x, @p y) jest poprawnym, zajętym polem, ponieważ sprawdzenie
+ * tych warunków następuje w funkcji @ref gamma_golden_possible.
+ * Sprawdza, czy po utracie pola (@p x, @p y) przez jego właściciela liczba zajętych
+ * przez niego obszarów nie przekroczy maksymalnej dozwolonej liczby obszarów
+ * zajętych przez jednego gracza.
+ * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] p – wskaźnik na strukturę przechowującą stan gracza,
+ * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości @p width
+ *                z funkcji @ref gamma_new,
+ * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości @p height
+ *                z funkcji @ref gamma_new.
+ * @return Wartość @p true, jeżeli po utracie pola (@p x, @p y) przez jego
+ * właściciela liczba zajętych przez niego obszarów nie będzie przekraczać
+ * maksymalnej dozwolonej liczby obszarów zajętych przez jednego gracza,
+ * a @p false w przeciwnym przypadku.
+ */
 static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
     player_t *victim = field_owner(g->board[y][x]);
     uint8_t mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
@@ -632,6 +743,58 @@ static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
     }
 }
 
+/** @brief Sprawdza, czy złoty ruch jest legalny ze strony gracza, który
+ * stawia pionek na polu zajętym przez przeciwnika.
+ * Sprawdza, czy złoty ruch jest legalny ze strony gracza wskazywanego
+ * przez @p p, który stawia pionek na polu (@p x, @p y) zajętym przez przeciwnika.
+ * Zakłada, że gracz wskazywany przez @p p jeszcze nie wykonał w rozgrywce złotego
+ * ruchu oraz że pole (@p x, @p y) jest poprawne, ponieważ sprawdzenie tych warunków
+ * następuje w funkcji @ref gamma_golden_possible.
+ * Sprawdza, czy pole (@p x, @p y) nie jest zajęte przez gracza wskazywanego przez
+ * @p p oraz czy po postawieniu pionka na tym polu nie zostanie przekroczona
+ * maksymalna liczba obszarów, jakie może gracz zajmować.
+ * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] p – wskaźnik na strukturę przechowującą stan gracza,
+ * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości @p width
+ *                z funkcji @ref gamma_new,
+ * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości @p height
+ *                z funkcji @ref gamma_new.
+ * @return Wartość @p true, jeżeli pole (@p x, @p y) nie jest zajęte przez gracza
+ * wskazywanego przez @p p oraz po postawieniu pionka na tym polu nie zostanie
+ * przekroczona maksymalna liczba obszarów, jakie może gracz zajmować.
+ */
+static bool player_golden_move_legal(gamma_t *g, player_t *p,
+                                     uint32_t x, uint32_t y) {
+    if (p == NULL) {
+        return true;
+    }
+    else if (field_owner(g->board[y][x]) == p) {
+        return false;
+    }
+    else if (player_areas(p) < g->areas) {
+        return true;
+    }
+    else {
+        return player_adjacent_fields(g, p, x, y) > 0;
+    }
+}
+
+/** @brief Zmienia rangę oraz rodzica w każdym polu obszaru.
+ * Wykonuje przeszukiwanie w głąb (DFS) obszaru zajętego przez gracza wskazywanego
+ * przez @p owner, zaczynając od pola (@p x, @p y) i ustawiając składową @p rank
+ * każdego odwiedzonego pola na 0 oraz składową @p parent na wartość równą
+ * zmiennej @p parent będącej parametrem procedury.
+ * Ustawia status @p status każdego odwiedzonego pola na @p MODIFIED.
+ * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] owner      – wskaźnik na strukturę przechowującą stan gracza,
+ *                         będącego właścicielem pola (@p x, @p y),
+ * @param[in] x          – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                         @p width z funkcji @ref gamma_new,
+ * @param[in] y          – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                         @p height z funkcji @ref gamma_new,
+ * @param[in] parent     – wskaźnik na pole będące nowym rodzicem każdego
+ *                         odwiedzonego pola.
+ */
 static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
                                         int64_t x, int64_t y, field_t *parent) {
     if (player_valid_field(g, owner, x, y)
@@ -649,6 +812,7 @@ static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
         area_update_parent_and_rank(g, owner, x, y + 1, parent);
     }
 }
+
 
 static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y, uint32_t areas) {
@@ -686,6 +850,42 @@ static void old_owner_update_areas(gamma_t *g, player_t *old_owner,
     area_search(g, old_owner, x, y - 1, UNCHECKED);
     area_search(g, old_owner, x, y + 1, UNCHECKED);
 }
+
+/** @brief Wykonuje złoty ruch.
+ * Ustawia pionek gracza @p player na polu (@p x, @p y) zajętym przez innego
+ * gracza, usuwając pionek innego gracza.
+ * @param[in,out] g   – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] player  – numer gracza, liczba dodatnia niewiększa od wartości
+ *                      @p players z funkcji @ref gamma_new,
+ * @param[in] x       – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                      @p width z funkcji @ref gamma_new,
+ * @param[in] y       – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                      @p height z funkcji @ref gamma_new.
+ */
+static void gamma_golden_move_update(gamma_t *g, uint32_t player,
+                                     uint32_t x, uint32_t y) {
+    gamma_add_player(g, player);
+
+    player_t *new_owner = g->players_arr[player];
+    field_t *f = g->board[y][x];
+    player_t *old_owner = field_owner(f);
+
+    field_set_owner(f, new_owner);
+    field_set_status(f, UNCHECKED);
+
+    player_modify_areas(g, f);
+    player_update_perimeter(g, f, true);
+    player_set_golden_possible(new_owner, false);
+    player_set_busy_fields(new_owner, player_busy_fields(new_owner) + 1);
+
+    old_owner_update_areas(g, old_owner, x, y);
+    player_set_busy_fields(old_owner, player_busy_fields(old_owner) - 1);
+    player_set_perimeter(old_owner,
+                         player_perimeter(old_owner) -
+                         player_adjacent_free_single_fields(g, old_owner, x, y));
+}
+
+///@}
 
 static void board_remove_rows(field_t ***board, uint32_t width,
                               uint32_t num_of_rows) {
@@ -725,7 +925,7 @@ static field_t ***board_new(uint32_t width, uint32_t height) {
     }
 }
 
-static void board_fill(gamma_t *g, char *board) {
+static void board_string_fill(gamma_t *g, char *board) {
     uint64_t filled = 0;
 
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
@@ -765,49 +965,6 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
             return true;
         }
     }
-}
-
-static void gamma_move_update(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
-    if (g->players_arr[player] == NULL) {
-        g->players_arr[player] = player_new(player);
-    }
-
-    g->board[y][x] = field_new(x, y, g->players_arr[player]);
-
-    player_t *p = g->players_arr[player];
-    field_t *f = g->board[y][x];
-
-    g->busy_fields++;
-    player_set_busy_fields(p, player_busy_fields(p) + 1);
-
-    player_modify_areas(g, f);
-    neighbours_update_perimeter(g, f);
-    player_update_perimeter(g, f, false);
-}
-
-static void gamma_golden_move_update(gamma_t *g, uint32_t player,
-                                     uint32_t x, uint32_t y) {
-    if (g->players_arr[player] == NULL) {
-        g->players_arr[player] = player_new(player);
-    }
-
-    player_t *new_owner = g->players_arr[player];
-    field_t *f = g->board[y][x];
-    player_t *old_owner = field_owner(f);
-
-    field_set_owner(f, new_owner);
-    field_set_status(f, UNCHECKED);
-
-    player_modify_areas(g, f);
-    player_update_perimeter(g, f, true);
-    player_set_golden_possible(new_owner, false);
-    player_set_busy_fields(new_owner, player_busy_fields(new_owner) + 1);
-
-    old_owner_update_areas(g, old_owner, x, y);
-    player_set_busy_fields(old_owner, player_busy_fields(old_owner) - 1);
-    player_set_perimeter(old_owner,
-                         player_perimeter(old_owner) -
-                         player_adjacent_free_single_fields(g, old_owner, x, y));
 }
 
 gamma_t *gamma_new(uint32_t width, uint32_t height,
@@ -926,7 +1083,7 @@ char *gamma_board(gamma_t *g) {
         char *board = malloc(((g->width + 1) * g->height + 1) * sizeof(char));
 
         if (board != NULL) {
-            board_fill(g, board);
+            board_string_fill(g, board);
         }
 
         return board;
