@@ -28,11 +28,13 @@ struct player {
 player_t *player_new(uint32_t number) {
     player_t *p = malloc(sizeof(player_t));
 
-    p->number = number;
-    p->busy_fields = 0;
-    p->areas = 0;
-    p->perimeter = 0;
-    p->golden_possible = true;
+    if (p != NULL) {
+        p->number = number;
+        p->busy_fields = 0;
+        p->areas = 0;
+        p->perimeter = 0;
+        p->golden_possible = true;
+    }
 
     return p;
 }

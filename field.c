@@ -40,12 +40,14 @@ struct field {
 field_t *field_new(uint32_t x, uint32_t y, player_t *owner) {
     field_t *f = malloc(sizeof(field_t));
 
-    f->x = x;
-    f->y = y;
-    f->owner = owner;
-    f->parent = NULL;
-    f->rank = 0;
-    f->status = UNCHECKED;
+    if (f != NULL) {
+        f->x = x;
+        f->y = y;
+        f->owner = owner;
+        f->parent = NULL;
+        f->rank = 0;
+        f->status = UNCHECKED;
+    }
 
     return f;
 }
