@@ -1,3 +1,10 @@
+/** @file
+ * Definicja funkcji sprawdzającej pomyślność alokacji pamięci
+ *
+ * @author Szymon Czyżmański 417797
+ * @date 13.04.2020
+ */
+
 #ifndef MEM_ALLOC_CHECK_H
 #define MEM_ALLOC_CHECK_H
 
