@@ -19,17 +19,21 @@
 
 /**
  * Maksymalna liczba cyfr, jakie może posiadać numer gracza.
- * Maksymalna wartość, jaką może przyjmować numer gracza jest równa 2^31 - 1.
+ * Maksymalna wartość, jaką może przyjmować numer gracza jest równa 2^32 - 1.
  * Sufit z logarytmu dziesiętnego z tej wartości jest równy 10.
  */
 #define PLAYER_MAX_DIGITS 10
 
+/**
+ * Struktura przechowująca stan dynamicznego bufora zawierającego napis
+ * opisujący aktualny stan planszy.
+ */
 struct dynamic_board {
     char *array;       /**< Bufor zawierający opis aktualnego stanu planszy. */
     uint64_t size;     /**< Długość napisu reprezentującego tesktowy opis
                         *   aktualnego stanu planszy, równy liczbie dodanych
                         *   znaków do bufora @p array. */
-    uint64_t capacity; /**< Pojemność buforu @p array. */
+    uint64_t capacity; /**< Pojemność bufora @p array. */
 };
 
 dyn_board_t *dynamic_board_new(uint64_t capacity) {
