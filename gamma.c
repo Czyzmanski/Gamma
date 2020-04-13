@@ -1029,6 +1029,31 @@ static void board_fill_string(gamma_t *g, char *board) {
 
 ///@}
 
+/** @name Inicjalizacja
+ * Inicjalizacja struktury przechowującej stan gry.
+ */
+///@{
+
+/** @brief Inicjalizauje strukturę przechowującą stan gry.
+ * Inicjalizuje strukturę przechowującą stan gry, wskazywaną przez @p g,
+ * tak, aby reprezentowała początkowy stan gry.
+ * @param[in,out] g   – wskaźnik na inicjalizowaną strukturę,
+ * @param[in] width   – szerokość planszy, liczba dodatnia,
+ *                      równa wartości @p width z funkcji
+ *                      @ref gamma_new,
+ * @param[in] height  – wysokość planszy, liczba dodatnia,
+ *                      równa wartości @p height z funkcji
+ *                      @ref gamma_new,
+ * @param[in] players – liczba graczy, liczba dodatnia,
+ *                      równa wartości @p players z funkcji
+ *                      @ref gamma_new,
+ * @param[in] areas   – maksymalna liczba obszarów,
+ *                      jakie może zająć jeden gracz,
+ *                      liczba dodatnia równa wartości
+ *                      @p areas z funkcji @ref gamma_new.
+ * @return Wartość @p true, jeśli inicjalizacja struktury przebiegła pomyślnie,
+ * a @p false w przeciwnym przypadku, na przykład w przypadku braku pamięci.
+ */
 static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
                        uint32_t players, uint32_t areas) {
     g->board = board_new(width, height);
@@ -1052,6 +1077,13 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
         }
     }
 }
+
+///@}
+
+/** @name Interfejs
+ * Implementacja funkcji zadeklarowanych w pliku nagłówkowym gamma.
+ */
+///@{
 
 gamma_t *gamma_new(uint32_t width, uint32_t height,
                    uint32_t players, uint32_t areas) {
@@ -1175,3 +1207,5 @@ char *gamma_board(gamma_t *g) {
         return board;
     }
 }
+
+///@}
