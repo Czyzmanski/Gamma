@@ -11,8 +11,6 @@
 
 #include "dynamic_board.h"
 
-#define GROWTH_FACTOR 2
-
 #define PLAYER_MAX_DIGITS 10
 
 struct dynamic_board {
@@ -44,7 +42,7 @@ static bool dynamic_board_ensure_capacity(dyn_board_t *board) {
         return true;
     }
     else {
-        board->capacity = board->capacity * GROWTH_FACTOR;
+        board->capacity *= 2;
         board->array = realloc(board->array, board->capacity * sizeof(char));
         return board->array != NULL;
     }
@@ -87,10 +85,6 @@ char *dynamic_board_fitted_array(dyn_board_t *board) {
     }
 
     return fitted;
-}
-
-uint64_t dynamic_board_size(dyn_board_t *board) {
-    return board->size;
 }
 
 void dynamic_board_delete(dyn_board_t *board) {

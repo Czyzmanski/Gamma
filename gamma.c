@@ -1028,6 +1028,16 @@ static void board_fill_string(gamma_t *g, char *board) {
     board[filled] = '\0';
 }
 
+/** @brief Daje napis opisujący stan planszy, gdy liczba graczy jest mniejsza
+ * niż 10.
+ * Alokuje w pamięci bufor, w którym umieszcza napis zawierający tekstowy
+ * opis aktualnego stanu planszy.
+ * @param[in] g         – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] board_len – długość, jaką ma mieć bufor zawierający opis
+ *                        aktualnego stanu planszy.
+ * @return Wskaźnik na zaalokowany bufor zawierający napis opisujący stan
+ * planszy lub NULL, jeśli nie udało się zaalokować pamięci.
+ */
 static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
     char *board = malloc(board_len * sizeof(char));
 
@@ -1038,6 +1048,49 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
     return board;
 }
 
+/** @brief Dodaje numer gracza do bufora zawierającego opis planszy.
+ * Dodaje numer gracza do bufora zawierającego opis aktualnego stanu planszy,
+ * gdy w rozgrywce bierze udział co najmniej 10 graczy.
+ * Graczy o numerach niemniejszych niż 10 otacza nawiasami kwadratowymi: [].
+ * @param[in,out] dyn_board – wskaźnik na strukturę przechowującą bufor
+ *                            zawierający opis stanu planszy,
+ * @param[in] player        – numer gracza, liczba dodatnia niewiększa
+ *                            od wartości @p players z funkcji
+ *                            @ref gamma_new.
+ * @return Wartość @p true, gdy pomyślnie dodano numer gracza @p player do bufora
+ * zawierającego opis aktualnego stanu planszy, a @p false w przeciwnym przypadku.
+ */
+static bool gamma_board_at_least_10_players_add_player(dyn_board_t *dyn_board,
+                                                       uint32_t player) {
+    if (player < 10) {
+        return dynamic_board_add_char(dyn_board, player + '0');
+    }
+    else {
+        bool added = dynamic_board_add_char(dyn_board, '[');
+
+        if (added) {
+            added = dynamic_board_add_player(dyn_board, player);
+        }
+        if (added) {
+            added = dynamic_board_add_char(dyn_board, ']');
+        }
+
+        return added;
+    }
+}
+
+/** @brief Daje napis opisujący stan planszy, gdy liczba graczy jest niemniejsza
+ * niż 10.
+ * Alokuje w pamięci bufor, w którym umieszcza napis zawierający tekstowy
+ * opis aktualnego stanu planszy.
+ * Graczy o numerach niemniejszych niż 10 umieszcza w nawiasach kwadratowych: [].
+ * @param[in] g         – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] board_len – początkowa pojemność, jaką ma mieć struktura
+ *                        zawierająca bufor przeznaczony do przetrzymywania
+ *                        opisu aktualnego stanu planszy.
+ * @return Wskaźnik na zaalokowany bufor zawierający napis opisujący stan
+ * planszy lub NULL, jeśli nie udało się zaalokować pamięci.
+ */
 static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len) {
     dyn_board_t *dyn_board = dynamic_board_new(board_len);
     if (dyn_board == NULL) {
@@ -1053,18 +1106,18 @@ static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len) {
                 }
                 else {
                     uint32_t player = player_number(field_owner(g->board[y][x]));
-                    if (player < 10) {
-                        added = dynamic_board_add_char(dyn_board, player + '0');
-                    }
-                    else {
-                        added = dynamic_board_add_player(dyn_board, player);
-                    }
+                    added = gamma_board_at_least_10_players_add_player(dyn_board,
+                                                                       player);
                 }
             }
-            added = dynamic_board_add_char(dyn_board, '\n');
+            if (added) {
+                added = dynamic_board_add_char(dyn_board, '\n');
+            }
+        }
+        if (added) {
+            added = dynamic_board_add_char(dyn_board, '\0');
         }
 
-        added = dynamic_board_add_char(dyn_board, '\0');
         char *result = added ? dynamic_board_fitted_array(dyn_board) : NULL;
         dynamic_board_delete(dyn_board);
 
