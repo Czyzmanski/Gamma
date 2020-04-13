@@ -33,7 +33,8 @@ dyn_board_t *dynamic_board_new(uint64_t capacity);
 /** @brief Dodaje znak do struktury przechowującej opis aktualnego stanu planszy.
  * Dodaj znak @p c do struktury wskazywanej przez @p board przechowującej napis
  * opisujący aktualny stan planszy.
- * W miarę potrzeby, zwiększa dwukrotnie pojemność wewnętrznego bufora.
+ * W miarę potrzeby, zwiększa pojemność wewnętrznego bufora tak, by jego nowa
+ * pojemność była równa starej pojemności pomnożonej przez @p GROWTH_FACTOR.
  * @param board[in,out] – wskaźnik na strukturę przechowującą napis zawierający
  *                        opis aktualnego stanu planszy,
  * @param c[in]         – znak do dodania do struktury wskazywanej przez

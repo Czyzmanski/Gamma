@@ -11,12 +11,25 @@
 
 #include "dynamic_board.h"
 
+/**
+ * Tyle razy zostanie powiększony bufor @ref dynamic_board::array, jeśli dojdzie do
+ * jego pełnego zapełnienia i trzeba będzie dodać nowy znak.
+ */
+#define GROWTH_FACTOR 2
+
+/**
+ * Maksymalna liczba cyfr, jakie może posiadać numer gracza.
+ * Maksymalna wartość, jaką może przyjmować numer gracza jest równa 2^31 - 1.
+ * Sufit z logarytmu dziesiętnego z tej wartości jest równy 10.
+ */
 #define PLAYER_MAX_DIGITS 10
 
 struct dynamic_board {
-    char *array;
-    uint64_t size;
-    uint64_t capacity;
+    char *array;       /**< Bufor zawierający opis aktualnego stanu planszy. */
+    uint64_t size;     /**< Długość napisu reprezentującego tesktowy opis
+                        *   aktualnego stanu planszy, równy liczbie dodanych
+                        *   znaków do bufora @p array. */
+    uint64_t capacity; /**< Pojemność buforu @p array. */
 };
 
 dyn_board_t *dynamic_board_new(uint64_t capacity) {
@@ -37,12 +50,24 @@ dyn_board_t *dynamic_board_new(uint64_t capacity) {
     return board;
 }
 
+/** @brief Zapewnia, aby można było dodać znak do bufora.
+ * Sprawdza, czy w buforze @ref dynamic_board::array jest wystarczająco miejsca,
+ * aby można było dodać nowy znak i jeżeli nie, to powiększa ten bufor tak,
+ * aby dodanie nowego znaku było możliwe.
+ * @param board[in,out] – wskaźnik na strukturę przechowującą napis zawierający
+ *                        opis aktualnego stanu planszy.
+ * @return Wartość @p true, jeżeli w buforze @ref dynamic_board::array jest
+ * miejsce na dodanie nowego znaku lub jeżeli tego miejsca nie było, ale pomyślnie
+ * udało się powiększyć bufor, a @p false, jeżeli w buforze nie było miejsca
+ * na dodanie nowego znaku i próba jego powiększenia zakończyła się niepowodzeniem
+ * z powodu braku pamięci.
+ */
 static bool dynamic_board_ensure_capacity(dyn_board_t *board) {
     if (board->size < board->capacity) {
         return true;
     }
     else {
-        board->capacity *= 2;
+        board->capacity = board->capacity * GROWTH_FACTOR;
         board->array = realloc(board->array, board->capacity * sizeof(char));
         return board->array != NULL;
     }
