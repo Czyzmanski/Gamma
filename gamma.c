@@ -929,6 +929,29 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
 
 ///@}
 
+/** @name Plansza
+ * Tworzenie, usuwanie oraz wypisywanie planszy.
+ */
+///@{
+
+/** @brief Usuwa wiersze planszy.
+ * Usuwa @p num_of_rows początkowych wierszy tablicy @p boards wskaźników
+ * do struktur przechowujących stany pól, reprezentującej planszę, na której
+ * toczy się rozgrywka.
+ * Zwalnia pamięć po każdym polu, którego adres był zapisany w jednym z usuwanych
+ * wierszy.
+ * Zwalnia pamięć po każdym z @p num_of_rows początkowych wierszy.
+ * @param board[in,out]       – tablica wskaźników do pól, o liczbie wierszy
+ *                              równej wartości @p height z funkcji
+ *                              @ref gamma_new oraz liczbie kolumn równej
+ *                              wartości @p width z funkcji @ref gamma_new,
+ *                              reprezentująca planszę na której odbywa się
+ *                              rozgrywka,
+ * @param width[in]           – długość każdego z wierszy tablicy @p board,
+ *                              równa wartości @p width z funkcji @ref gamma_new,
+ * @param num_of_rows[in]     – liczba wierszy tablicy @p board, które należy
+ *                              usunąć.
+ */
 static void board_remove_rows(field_t ***board, uint32_t width,
                               uint32_t num_of_rows) {
     for (uint32_t i = 0; i < num_of_rows; i++) {
@@ -939,6 +962,19 @@ static void board_remove_rows(field_t ***board, uint32_t width,
     }
 }
 
+/** @brief Tworzy planszę.
+ * Alokuje pamięć na tablicę wskaźników do struktur przechowujących stan pól,
+ * o @p height wierszach i @p width kolumnach.
+ * Przypisuje każdej komórce tej tablicy wartość NULL.
+ * @param width[in]           – szerokość tworzonej planszy, długość każdego
+ *                              z wierszy tworzonej tablicy, równa wartości
+ *                              @p width z funkcji @ref gamma_new,
+ * @param height[in]          – wysokość tworzonej planszy, liczba wierszy
+ *                              tworzonej tablicy, wartość równa @p height
+ *                              z funkcji @ref gamma_new.
+ * @return Wskaźnik na utworzoną tablicę lub NULL, jeśli nie udało się zaalokować
+ * pamięci.
+ */
 static field_t ***board_new(uint32_t width, uint32_t height) {
     field_t ***board = malloc(height * sizeof(field_t ***));
 
@@ -967,6 +1003,12 @@ static field_t ***board_new(uint32_t width, uint32_t height) {
     }
 }
 
+/** @brief Wypełnia bufor opisujący stan planszy.
+ * Wypełnia bufor @p board opisujący stan planszy w przypadku, kiedy liczba
+ * graczy jest niewiększa niż 9.
+ * @param g[in]               – wskaźnik na strukturę przechowującą stan gry,
+ * @param board[in,out]       – wskaźnik na bufor będący opisem stanu planszy.
+ */
 static void board_fill_string(gamma_t *g, char *board) {
     uint64_t filled = 0;
 
@@ -984,6 +1026,8 @@ static void board_fill_string(gamma_t *g, char *board) {
 
     board[filled] = '\0';
 }
+
+///@}
 
 static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
                        uint32_t players, uint32_t areas) {
