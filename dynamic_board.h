@@ -9,7 +9,6 @@
 #ifndef DYNAMIC_BOARD_H
 #define DYNAMIC_BOARD_H
 
-#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -19,7 +18,7 @@
  */
 typedef struct dynamic_board dyn_board_t;
 
-dyn_board_t *dynamic_board_new(size_t capacity);
+dyn_board_t *dynamic_board_new(uint64_t capacity);
 
 bool dynamic_board_add_char(dyn_board_t *board, char c);
 
@@ -27,7 +26,7 @@ bool dynamic_board_add_player(dyn_board_t *board, uint32_t player);
 
 char *dynamic_board_fitted_array(dyn_board_t *board);
 
-size_t dynamic_board_size(dyn_board_t *board);
+uint64_t dynamic_board_size(dyn_board_t *board);
 
 void dynamic_board_delete(dyn_board_t *board);
 

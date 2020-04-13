@@ -10,6 +10,7 @@
 #include "gamma.h"
 #include "field.h"
 #include "mem_alloc_check.h"
+#include "dynamic_board.h"
 
 /**
  * Maksymalna liczba pól, z jakimi pole może sąsiadować.
@@ -1027,6 +1028,50 @@ static void board_fill_string(gamma_t *g, char *board) {
     board[filled] = '\0';
 }
 
+static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
+    char *board = malloc(board_len * sizeof(char));
+
+    if (board != NULL) {
+        board_fill_string(g, board);
+    }
+
+    return board;
+}
+
+static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len) {
+    dyn_board_t *dyn_board = dynamic_board_new(board_len);
+    if (dyn_board == NULL) {
+        return NULL;
+    }
+    else {
+        bool added = true;
+
+        for (int64_t y = g->height - 1; y >= 0 && added; y--) {
+            for (uint32_t x = 0; x < g->width && added; x++) {
+                if (g->board[y][x] == NULL) {
+                    added = dynamic_board_add_char(dyn_board, '.');
+                }
+                else {
+                    uint32_t player = player_number(field_owner(g->board[y][x]));
+                    if (player < 10) {
+                        added = dynamic_board_add_char(dyn_board, player + '0');
+                    }
+                    else {
+                        added = dynamic_board_add_player(dyn_board, player);
+                    }
+                }
+            }
+            added = dynamic_board_add_char(dyn_board, '\n');
+        }
+
+        added = dynamic_board_add_char(dyn_board, '\0');
+        char *result = added ? dynamic_board_fitted_array(dyn_board) : NULL;
+        dynamic_board_delete(dyn_board);
+
+        return result;
+    }
+}
+
 ///@}
 
 /** @name Inicjalizacja
@@ -1183,7 +1228,6 @@ uint64_t gamma_free_fields(gamma_t *g, uint32_t player) {
     }
     else {
         player_t *p = g->players_arr[player];
-
         if (p == NULL || player_areas(p) < g->areas) {
             return g->width * g->height - g->busy_fields;
         }
@@ -1198,13 +1242,13 @@ char *gamma_board(gamma_t *g) {
         return NULL;
     }
     else {
-        char *board = malloc(((g->width + 1) * g->height + 1) * sizeof(char));
-
-        if (board != NULL) {
-            board_fill_string(g, board);
+        uint64_t board_len = ((g->width + 1) * g->height + 1);
+        if (g->players < 10) {
+            return gamma_board_less_than_10_players(g, board_len);
         }
-
-        return board;
+        else {
+            return gamma_board_at_least_10_players(g, board_len);
+        }
     }
 }
 

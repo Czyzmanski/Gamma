@@ -17,11 +17,11 @@
 
 struct dynamic_board {
     char *array;
-    size_t size;
-    size_t capacity;
+    uint64_t size;
+    uint64_t capacity;
 };
 
-dyn_board_t *dynamic_board_new(size_t capacity) {
+dyn_board_t *dynamic_board_new(uint64_t capacity) {
     dyn_board_t *board = malloc(sizeof(dyn_board_t));
 
     if (board != NULL) {
@@ -71,11 +71,10 @@ bool dynamic_board_add_player(dyn_board_t *board, uint32_t player) {
         player /= 10;
     }
 
-    bool added = dynamic_board_add_char(board, '[');
+    bool added = true;
     for (int8_t i = digits - 1; i >= 0 && added; i--) {
         added = dynamic_board_add_char(board, player_digits[i] + '0');
     }
-    added = dynamic_board_add_char(board, ']');
 
     return added;
 }
@@ -90,7 +89,7 @@ char *dynamic_board_fitted_array(dyn_board_t *board) {
     return fitted;
 }
 
-size_t dynamic_board_size(dyn_board_t *board) {
+uint64_t dynamic_board_size(dyn_board_t *board) {
     return board->size;
 }
 
