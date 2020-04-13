@@ -12,7 +12,7 @@
 #include "mem_alloc_check.h"
 
 /**
- * Maksymalna liczba pól, z jakimi może pole sąsiadować.
+ * Maksymalna liczba pól, z jakimi pole może sąsiadować.
  */
 #define MAX_NEIGHBOURS 4
 
@@ -57,9 +57,11 @@ struct gamma {
 ///@{
 
 /** @brief Tworzy nowy obszar.
- * Czyni pole @p f korzeniem nowego obszaru: ustawia składową @p rank pola @p f
- * na 0 raz ustawia składową @p root pola @p f na NULL. Zwiększa o 1 wartość
- * składowej @p areas gracza @p owner będącego właścicielem pola @p f.
+ * Czyni pole wskazywane przez @p f korzeniem nowego obszaru: ustawia składową
+ * @p rank pola wskazywanego przez @p f na 0 raz ustawia składową @p root pola
+ * wskazywanego przez @p f na NULL. Zwiększa o 1 wartość składowej @p areas
+ * gracza wskazywanego przez @p owner będącego właścicielem wyżej wspomnianego
+ * pola.
  * @param[in,out] f – wskaźnik na strukturę przechowującą stan pola.
  */
 static void area_new(field_t *f) {
@@ -70,13 +72,14 @@ static void area_new(field_t *f) {
     player_set_areas(owner, player_areas(owner) + 1);
 }
 
-/** @brief Znajduje korzeń obszaru do którego należy pole @p f.
- * Rekurencyjnie znajduje korzeń obszaru @p root do którego należy pole @p f.
+/** @brief Znajduje korzeń obszaru.
+ * Rekurencyjnie znajduje korzeń @p root obszaru do którego należy pole
+ * wskazywane przez @p f.
  * Dokonuje kompresji ścieżki od @p f do @p root, ustawiając składową @p parent
  * w każdym polu na tej ścieżce na @p root, z wyjątkiem samego korzenia @p root.
  * @param[in,out] f – wskaźnik na strukturę przechowującą stan pola.
  * @return Wskaźnik na strukturę przechowującą stan pola będącego korzeniem
- * obszaru do którego należy pole @p f.
+ * obszaru do którego należy pole wskazywane przez @p f.
  */
 static field_t *area_find_root(field_t *f) {
     if (field_parent(f) == NULL) {
@@ -89,20 +92,22 @@ static field_t *area_find_root(field_t *f) {
     }
 }
 
-/** @brief Łączy dwa obszary w jeden.
- * Ustawia wskaźnik @p parent korzenia @p f1_root pierwszego obszaru,
- * do którego należy pole @p f1, na korzeń @p f2_root drugiego obszaru,
- * do którego należy pole @p f2, jeśli ranga @p f1_root_rank pierwszego obszaru
- * jest mniejsza od rangi @p f2_root_rank drugiego obszaru. W przeciwnym razie,
- * ustawia wskaźnik @p parent pola @p f2_root na @p f1_root. Jeśli wartość
- * @p f1_root_rank jest równa wartości @p f2_root_rank, zwiększa rangę pierwszego
- * pola, zwiększając wartość składowej @p rank w polu @p f1_root o 1.
+/** @brief Łączy dwa obszary w jeden według rangi.
+ * Ustawia wskaźnik @p parent pola wskazywanego przez @p f1_root, będącego korzeniem
+ * pierwszego obszaru, do którego należy pole wskazywane przez @p f1, na pole
+ * wskazywane przez @p f2_root, będące korzeniem drugiego obszaru, do którego należy
+ * pole wskazywane przez @p f2, jeśli ranga @p f1_root_rank korzenia pierwszego
+ * obszaru jest mniejsza od rangi @p f2_root_rank korzenia drugiego obszaru.
+ * W przeciwnym razie, ustawia wskaźnik @p parent pola wskazywanego przez @p f2_root
+ * na @p f1_root. Jeśli wartość @p f1_root_rank jest równa wartości @p f2_root_rank,
+ * zwiększa rangę korzenia pierwszego obszaru, dodając 1 do wartości składowej
+ * @p rank pola wskazywanego przez @p f1_root.
  * @param[in,out] f1 – wskaźnik na strukturę przechowującą stan pola
  *                     należącego do pierwszego obszaru,
  * @param[in,out] f2 – wskaźnik na strukturę przechowującą stan pola
  *                     należącego do drugiego obszaru.
- * @return Wartość @p false, gdy pola @p f1 oraz @p f2 należą do tego samego
- * obszaru i nie ma czego łączyć, a @p true w przeciwnym przypadku.
+ * @return Wartość @p false, gdy pola wskazywane przez @p f1 oraz @p f2 należą do
+ * tego samego obszaru i nie wykonano połączenia, a @p true w przeciwnym przypadku.
  */
 static bool area_merge(field_t *f1, field_t *f2) {
     field_t *f1_root = area_find_root(f1);
@@ -139,7 +144,7 @@ static bool area_merge(field_t *f1, field_t *f2) {
 
 /** @brief Sprawdza poprawność numeru kolumny.
  * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
- * mniejszą od wartości @p width z funkcji @ref gamma_new
+ * mniejszą od wartości @p width z funkcji @ref gamma_new.
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
  *                @p width z funkcji @ref gamma_new.
@@ -258,7 +263,7 @@ static uint8_t player_adjacent_fields(gamma_t *g, player_t *p,
  * Sprawdza, czy pole nie zostało jeszcze stworzone, tzn. czy wartość wskaźnika
  * @p g->board[y][x] jest równa NULL, lub, w przeciwnym razie, czy pole nie ma
  * przypisanego właściciela, tzn. czy wskaźnik @p owner będący składową pola
- * na które wskazuje wskaźnik @p g->board[y][x] jest równy NULL.
+ * na które wskazuje @p g->board[y][x] jest równy NULL.
  * Sprawdza, czy liczba pól sąsiadujących z polem (@p x, @p y), zajętych przez
  * gracza wskazywanego przez @p owner jest równa 0.
  * @param[in] g     – wskaźnik na strukturę przechowującą stan gry,
@@ -572,7 +577,7 @@ static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
 ///@}
 
 /** @name Ruch
- * Sprawdzenie czy dany ruch może zostać przez gracza wykonany oraz realizacja
+ * Sprawdzanie czy dany ruch może zostać przez gracza wykonany oraz realizacja
  * ruchu gracza.
  */
 ///@{
@@ -634,19 +639,20 @@ static void gamma_move_update(gamma_t *g, uint32_t player, uint32_t x, uint32_t 
 ///@}
 
 /** @name Złoty ruch
- * Sprawdzenie czy złoty ruch może zostać wykonany zarówno ze strony gracza,
+ * Sprawdzanie czy złoty ruch jest legalny zarówno ze strony gracza,
  * który stawia swój pionek na polu zajętym przez przeciwnika, nazywanym
- * ofiarą (@p victim), jak i ze strony ofiary.
+ * ofiarą (@p victim), jak i ze strony tracącego pole.
  * Implementacja algorytmu przeszukiwania w głąb (DFS), wykorzystywanego
  * do sprawdzenia, czy usunięcie pola nie zwiększy liczby obszarów zajętych
  * przez ofiarę ponad dopuszczalny limit.
  */
 ///@{
 
-/** @brief Wykonuje przeszukiwanie w głąb (DFS) obszaru zajętego przez gracza.
+/** @brief Przeszukuje obszar zajęty przez gracza.
  * Wykonuje przeszukiwanie w głąb (DFS) obszaru zajętego przez gracza wskazywanego
  * przez @p owner, zaczynając od pola (@p x, @p y) i ustawiając status każdego
- * odwiedzonego pola w tym obszarze na wartość @p desired.
+ * odwiedzonego pola w tym obszarze na wartość @p desired, równą jednej z wartości
+ * zdefiniowanych w wyliczeniu @ref status.
  * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] owner      – wskaźnik na strukturę przechowującą stan gracza,
  *                         będącego właścicielem pola (@p x, @p y),
@@ -712,7 +718,7 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
  * Sprawdza, czy złoty ruch jest legalny ze strony gracza, który traci pionek
  * z pola (@p x, @p y).
  * Zakłada, że pole (@p x, @p y) jest poprawnym, zajętym polem, ponieważ sprawdzenie
- * tych warunków następuje w funkcji @ref gamma_golden_possible.
+ * tych warunków następuje w funkcji @ref gamma_golden_possible.posiadaniu
  * Sprawdza, czy po utracie pola (@p x, @p y) przez jego właściciela liczba zajętych
  * przez niego obszarów nie przekroczy maksymalnej dozwolonej liczby obszarów
  * zajętych przez jednego gracza.
@@ -813,7 +819,29 @@ static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
     }
 }
 
-
+/** @brief Wyodrębnia nowy obszar ze starego po usunięciu z niego pola w wyniku
+ * złotego ruchu.
+ * Jeżeli pole (@p x, @p y) należy do gracza wskazywanego przez @p old_owner,
+ * będącego graczem który w wyniku złotego ruchu wykonanego przez przeciwnika
+ * stracił sąsiadujące pole, czyni pole (@p x, @p y) korzeniem nowego obszaru,
+ * ustawiając jego rangę @p rank na 0 oraz rodzica @p parent na NULL, po czym
+ * wywołuje funkcję @ref area_update_parent_and_rank dla każdego sąsiedniego pola,
+ * przekazując jako parametr @p parent tej funkcji wskaźnik do struktury
+ * przechowującej stan pola (@p x, @p y).
+ * Oblicza liczbę obszarów zajętych przez gracza wskazywanego przez @p old_owner
+ * po wyodrębnieniu wszystkich nowych obszarów.
+ * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] old_owner  – wskaźnik na strukturę przechowującą stan gracza,
+ *                         będącego właścicielem pola (@p x, @p y),
+ * @param[in] x          – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                         @p width z funkcji @ref gamma_new,
+ * @param[in] y          – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                         @p height z funkcji @ref gamma_new,
+ * @param[in,out] areas  – liczba obszarów zajętych przez gracza wskazywanego
+ *                         przez @p old_owner.
+ * @return Liczba obszarów zajętych przez gracza wskazywanego przez @p old_owner
+ * po ewentualnym wyobrębnieniu nowego obszaru z korzeniem w polu (@p x, @p y).
+ */
 static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y, uint32_t areas) {
     if (player_valid_field(g, old_owner, x, y)) {
@@ -834,7 +862,21 @@ static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
     return areas;
 }
 
-static void old_owner_update_areas(gamma_t *g, player_t *old_owner,
+/** @brief Modyfikuje obszary gracza po utracie przez niego pola (@p x, @p y).
+ * Dla każdego pola sąsiadującego z (@p x, @p y), należącego do gracza wskazywanego
+ * przez @p old_owner i nie należącego do żadnego nowo stworzonego obszaru, tworzy
+ * nowy obszar z korzeniem w tym polu.
+ * Odpowiednio aktualizuje liczbę obszarów zajętych przez gracza wskazywanego przez
+ * @p old_owner.
+ * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] old_owner  – wskaźnik na strukturę przechowującą stan gracza,
+ *                         który utracił pole (@p x, @p y),
+ * @param[in] x          – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                         @p width z funkcji @ref gamma_new,
+ * @param[in] y          – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                         @p height z funkcji @ref gamma_new.
+ */
+static void old_owner_modify_areas(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y) {
     uint32_t areas = player_areas(old_owner) - 1;
 
@@ -878,7 +920,7 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
     player_set_golden_possible(new_owner, false);
     player_set_busy_fields(new_owner, player_busy_fields(new_owner) + 1);
 
-    old_owner_update_areas(g, old_owner, x, y);
+    old_owner_modify_areas(g, old_owner, x, y);
     player_set_busy_fields(old_owner, player_busy_fields(old_owner) - 1);
     player_set_perimeter(old_owner,
                          player_perimeter(old_owner) -
@@ -925,7 +967,7 @@ static field_t ***board_new(uint32_t width, uint32_t height) {
     }
 }
 
-static void board_string_fill(gamma_t *g, char *board) {
+static void board_fill_string(gamma_t *g, char *board) {
     uint64_t filled = 0;
 
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
@@ -1083,7 +1125,7 @@ char *gamma_board(gamma_t *g) {
         char *board = malloc(((g->width + 1) * g->height + 1) * sizeof(char));
 
         if (board != NULL) {
-            board_string_fill(g, board);
+            board_fill_string(g, board);
         }
 
         return board;
