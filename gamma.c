@@ -5,9 +5,8 @@
  * @date 11.04.2020
  */
 
-#include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gamma.h"
 #include "field.h"
@@ -19,18 +18,24 @@
 #define MAX_NEIGHBOURS 4
 
 /**
- * Szerokość pól w napisie przechowującym tesktowy opis stanu planszy w przypadku,
- * gdy w rozgrywce uczestniczy co najmniej 10 graczy.
- * Liczba równa maksymalnej liczbie cyfr, jaką może posiadać numer gracza,
- * wartość równa sufitowi logarytmu o podstawie 10 z liczby 2^32 - 1.
- */
-#define FIELD_WIDTH 10
-
-/**
- * Tekstowy symbol wykorzystywany w napisie przechowującym tekstowy opis stanu
+ * Znak wykorzystywany w napisie przechowującym opis stanu
  * planszy, oznaczający wolne pole.
  */
 #define FREE_FIELD '.'
+
+/**
+ * Znak wykorzystywany do wypełnienia z lewej strony kolumn w napisie
+ * przechowującym opis stanu planszy, tak, aby ich szerokość była równa
+ * liczbie cyfr największego możliwego numeru gracza.
+ * Znak rozdzielający kolumny.
+ */
+#define PADDING ' '
+
+/**
+ * Maksymalna liczba cyfr, jaką może posiadać numer gracza, liczba równa
+ * sufitowi logarytmu dziesiętnego z @p UINT32_MAX.
+ */
+#define PLAYER_MX_DIGITS 10
 
 /**
  * Struktura przechowująca stan gry.
@@ -1067,6 +1072,27 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
     return board;
 }
 
+uint64_t board_fill_string_add_player(char *board, uint64_t filled,
+                                      uint32_t player, uint8_t col_width,
+                                      char digits[PLAYER_MX_DIGITS]) {
+    uint8_t added = 0;
+
+    while (player > 0) {
+        digits[added] = (player % 10) + '0';
+        added++;
+        player /= 10;
+    }
+
+    for (int8_t i = col_width - 1; i >= added; i--, filled++) {
+        board[filled] = PADDING;
+    }
+    for (int8_t i = added - 1; i >= 0; i--, filled++) {
+        board[filled] = digits[i];
+    }
+
+    return filled;
+}
+
 /** @brief Wypełnia bufor opisujący stan planszy.
  * Wypełnia bufor @p board opisujący stan planszy w przypadku, kiedy liczba
  * graczy jest niemniejsza niż 10.
@@ -1076,25 +1102,28 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
  * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
  * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy.
  */
-static void board_fill_string_at_least_10_players(gamma_t *g, char *board) {
+static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
+                                                  uint8_t col_width) {
     uint64_t filled = 0;
 
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
         for (uint32_t x = 0; x < g->width; x++) {
-            char buf[FIELD_WIDTH + 1];
-
             if (g->board[y][x] == NULL) {
-                sprintf(buf, "%10c", FREE_FIELD);
+                for (uint8_t i = 1; i < col_width; i++, filled++) {
+                    board[filled] = PADDING;
+                }
+                board[filled] = FREE_FIELD;
+                filled++;
             }
             else {
-                sprintf(buf, "%10d", player_number(field_owner(g->board[y][x])));
+                char digits[PLAYER_MX_DIGITS];
+                uint32_t player = player_number(field_owner(g->board[y][x]));
+                filled = board_fill_string_add_player(board, filled, player,
+                                                      col_width, digits);
             }
 
-            strncpy(board + filled, buf, FIELD_WIDTH);
-            filled += FIELD_WIDTH;
-
             if (x < g->width - 1) {
-                board[filled] = ' ';
+                board[filled] = PADDING;
                 filled++;
             }
         }
@@ -1117,11 +1146,12 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board) {
  * @return Wskaźnik na zaalokowany bufor zawierający napis opisujący stan
  * planszy lub NULL, jeśli nie udało się zaalokować pamięci.
  */
-static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len) {
+static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len,
+                                             uint8_t col_width) {
     char *board = malloc(board_len * sizeof(char));
 
     if (board != NULL) {
-        board_fill_string_at_least_10_players(g, board);
+        board_fill_string_at_least_10_players(g, board, col_width);
     }
 
     return board;
@@ -1300,8 +1330,16 @@ char *gamma_board(gamma_t *g) {
         return gamma_board_less_than_10_players(g, (g->width + 1) * g->height + 1);
     }
     else {
-        uint64_t board_len = (FIELD_WIDTH + 1) * g->width * g->height + 1;
-        return gamma_board_at_least_10_players(g, board_len);
+        uint8_t col_width = 0;
+        uint32_t mx_player = g->players;
+
+        while (mx_player > 0) {
+            col_width++;
+            mx_player /= 10;
+        }
+
+        uint64_t board_len = (col_width + 1) * g->width * g->height + 1;
+        return gamma_board_at_least_10_players(g, board_len, col_width);
     }
 }
 
