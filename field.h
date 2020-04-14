@@ -95,10 +95,10 @@ field_t *field_parent(field_t *f);
 
 /** @brief Aktualizuje rodzica pola.
  * Przypisuje wskaźnikowi @p parent, będącego składową struktury pola wskazywanej
- * przez @p f, wartość wskaźnika @p owner będącego parametrem procedury.
+ * przez @p f, wartość wskaźnika @p parent będącego parametrem procedury.
  * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola,
- * @param[in] owner     – wskaźnik na strukturę przechowującą stan gracza,
- *                        którego pionek znajduje się na polu @p f.
+ * @param[in] parent    – wskaźnik na strukturę przechowującą stan pola,
+ *                        które ma się stać rodzicem pola wskazywanego przez @p f.
  */
 void field_set_parent(field_t *f, field_t *parent);
 

@@ -60,7 +60,7 @@ struct gamma {
 /** @brief Tworzy nowy obszar.
  * Czyni pole wskazywane przez @p f korzeniem nowego obszaru: ustawia składową
  * @ref field::rank pola wskazywanego przez @p f na 0 oraz ustawia składową
- * @ref field::root pola wskazywanego przez @p f na NULL. Zwiększa o 1 wartość
+ * @ref field::parent pola wskazywanego przez @p f na NULL. Zwiększa o 1 wartość
  * składowej @ref player::areas gracza wskazywanego przez @p owner będącego
  * właścicielem wyżej wspomnianego pola.
  * @param[in,out] f – wskaźnik na strukturę przechowującą stan pola.
@@ -222,6 +222,7 @@ static inline bool valid_busy_field(gamma_t *g, int64_t x, int64_t y) {
  * wskazywany przez @p p, tzn. czy wskaźnik @ref field::owner będący składową
  * pola na które wskazuje wskaźnik @p g->board[y][x] jest równy @p p.
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] p – wskaźnik na strukturę przechowującą stan gracza,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
  *                @p width z funkcji @ref gamma_new,
  * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
@@ -239,6 +240,7 @@ static inline bool player_valid_field(gamma_t *g, player_t *p,
  * Zlicza pola sąsiadujące z polem (@p x, @p y), które zostały zajęte przez gracza
  * wskazywanego przez @p p.
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] p – wskaźnik na strukturę przechowującą stan gracza,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
  *                @p width z funkcji @ref gamma_new,
  * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości
@@ -395,10 +397,10 @@ static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
  * @param[in] g           – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] f           – wskaźnik na strukturę przechowującą stan pola właśnie
  *                          zajętego przez gracza,
- * @param[in] golden_move – wartość @p true, jeżeli funkcja została wywołana
- *                          w wyniku wykonania złotego ruchu przez gracza,
- *                          a @p false, jeżeli funkcja została wywołana w wyniku
- *                          wykonania zwykłego ruchu przez gracza.
+ * @param[in] x           – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                          @p width z funkcji @ref gamma_new,
+ * @param[in] y           – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                          @p height z funkcji @ref gamma_new.
  */
 static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
                                         int64_t x, int64_t y) {
@@ -727,7 +729,6 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
  * przez niego obszarów nie przekroczy maksymalnej dozwolonej liczby obszarów
  * zajętych przez jednego gracza.
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
- * @param[in] p – wskaźnik na strukturę przechowującą stan gracza,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości @p width
  *                z funkcji @ref gamma_new,
  * @param[in] y – numer wiersza, liczba nieujemna mniejsza od wartości @p height
@@ -945,15 +946,15 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
  * Zwalnia pamięć po każdym polu, którego adres był zapisany w jednym z usuwanych
  * wierszy.
  * Zwalnia pamięć po każdym z @p num_of_rows początkowych wierszy.
- * @param board[in,out]       – tablica wskaźników do pól, o liczbie wierszy
+ * @param[in,out] board       – tablica wskaźników do pól, o liczbie wierszy
  *                              równej wartości @p height z funkcji
  *                              @ref gamma_new oraz liczbie kolumn równej
  *                              wartości @p width z funkcji @ref gamma_new,
  *                              reprezentująca planszę na której odbywa się
  *                              rozgrywka,
- * @param width[in]           – długość każdego z wierszy tablicy @ref gamma::board,
+ * @param[in] width           – długość każdego z wierszy tablicy @ref gamma::board,
  *                              równa wartości @p width z funkcji @ref gamma_new,
- * @param num_of_rows[in]     – liczba wierszy tablicy @ref gamma::board,
+ * @param[in] num_of_rows     – liczba wierszy tablicy @ref gamma::board,
  *                              które należy usunąć.
  */
 static void board_remove_rows(field_t ***board, uint32_t width,
@@ -970,10 +971,10 @@ static void board_remove_rows(field_t ***board, uint32_t width,
  * Alokuje pamięć na tablicę wskaźników do struktur przechowujących stan pól,
  * o @p height wierszach i @p width kolumnach.
  * Przypisuje każdej komórce tej tablicy wartość NULL.
- * @param width[in]           – szerokość tworzonej planszy, długość każdego
+ * @param[in] width           – szerokość tworzonej planszy, długość każdego
  *                              z wierszy tworzonej tablicy, równa wartości
  *                              @p width z funkcji @ref gamma_new,
- * @param height[in]          – wysokość tworzonej planszy, liczba wierszy
+ * @param[in] height          – wysokość tworzonej planszy, liczba wierszy
  *                              tworzonej tablicy, wartość równa @p height
  *                              z funkcji @ref gamma_new.
  * @return Wskaźnik na utworzoną tablicę lub NULL, jeśli nie udało się zaalokować
@@ -1010,8 +1011,8 @@ static field_t ***board_new(uint32_t width, uint32_t height) {
 /** @brief Wypełnia bufor opisujący stan planszy.
  * Wypełnia bufor @p board opisujący stan planszy w przypadku, kiedy liczba
  * graczy jest niewiększa niż 9.
- * @param g[in]               – wskaźnik na strukturę przechowującą stan gry,
- * @param board[in,out]       – wskaźnik na bufor będący opisem stanu planszy.
+ * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy.
  */
 static void board_fill_string(gamma_t *g, char *board) {
     uint64_t filled = 0;

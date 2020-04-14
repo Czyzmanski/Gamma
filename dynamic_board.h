@@ -22,7 +22,7 @@ typedef struct dynamic_board dyn_board_t;
  * Alokuje pamięć na nową strukturę przechowującą napis opisujący aktualny
  * stan planszy.
  * Inicjalizuje tę strukturę tak, aby reprezentowała pusty napis.
- * @param capacity[in]  – początkowy rozmiar wewnętrznego bufora nowo tworzonej
+ * @param[in] capacity  – początkowy rozmiar wewnętrznego bufora nowo tworzonej
  *                        struktury, zawierającego opis aktualnego stanu planszy,
  *                        liczba całkowita dodatnia.
  * @return Wskaźnik na nowo utworzoną strukturę lub NULL, jeśli nie udało się
@@ -35,9 +35,9 @@ dyn_board_t *dynamic_board_new(uint64_t capacity);
  * opisujący aktualny stan planszy.
  * W miarę potrzeby, zwiększa pojemność wewnętrznego bufora tak, by jego nowa
  * pojemność była równa starej pojemności pomnożonej przez @p GROWTH_FACTOR.
- * @param board[in,out] – wskaźnik na strukturę przechowującą napis zawierający
+ * @param[in,out] board – wskaźnik na strukturę przechowującą napis zawierający
  *                        opis aktualnego stanu planszy,
- * @param c[in]         – znak do dodania do struktury wskazywanej przez
+ * @param[in] c         – znak do dodania do struktury wskazywanej przez
  *                        @p board.
  * @return Wartość @p true, jeśli dodano znak pomyślnie, a @p false
  * w przeciwnym przypadku.
@@ -50,10 +50,12 @@ bool dynamic_board_add_char(dyn_board_t *board, char c);
  * Dodaj znak @p c do struktury wskazywanej przez @p board przechowującej napis
  * opisujący aktualny stan planszy.
  * W miarę potrzeby, zwiększa dwukrotnie pojemność wewnętrznego bufora.
- * @param board[in,out] – wskaźnik na strukturę przechowującą napis zawierający
+ * @param[in,out] board – wskaźnik na strukturę przechowującą napis zawierający
  *                        opis aktualnego stanu planszy,
- * @param player[in]    – numer gracza, który ma zostać dodany do struktury
- *                        wskazywanej przez @p board.
+ * @param[in] player    – numer gracza, który ma zostać dodany do struktury
+ *                        wskazywanej przez @p board, liczba dodatnia
+ *                        niewiększa niż wartość @p players z funkcji
+ *                        @ref gamma_new.
  * @return Wartość @p true, jeśli dodano znak pomyślnie, a @p false
  * w przeciwnym przypadku.
  */
@@ -75,7 +77,7 @@ char *dynamic_board_fitted_array(dyn_board_t *board);
  * Usuwa strukturę wskazywaną przez @p board, zawierającą bufor przechowujący
  * opis aktualnego stanu planszy.
  * Nic nie robi, jeśli wskaźnik ten ma wartość NULL.
- * @param board[in]     – wskaźnik na strukturę przechowującą bufor zawierający
+ * @param[in] board     – wskaźnik na strukturę przechowującą bufor zawierający
  *                        opis aktualnego stanu planszy.
  */
 void dynamic_board_delete(dyn_board_t *board);

@@ -58,7 +58,7 @@ dyn_board_t *dynamic_board_new(uint64_t capacity) {
  * Sprawdza, czy w buforze @ref dynamic_board::array jest wystarczająco miejsca,
  * aby można było dodać nowy znak i jeżeli nie, to powiększa ten bufor tak,
  * aby dodanie nowego znaku było możliwe.
- * @param board[in,out] – wskaźnik na strukturę przechowującą napis zawierający
+ * @param[in,out] board – wskaźnik na strukturę przechowującą napis zawierający
  *                        opis aktualnego stanu planszy.
  * @return Wartość @p true, jeżeli w buforze @ref dynamic_board::array jest
  * miejsce na dodanie nowego znaku lub jeżeli tego miejsca nie było, ale pomyślnie
