@@ -12,8 +12,7 @@
 
 /** @brief Sprawdza, czy udało się zaalokować pamięć.
  * Sprawdza, czy wartość wskaźnika @p object jest równa NULL.
- * Jeśli tak, kończy działanie programu z kodem wyjścia @p NO_MEMORY_EXIT_CODE,
- * sygnalizującym, że zabrakło pamięci.
+ * Jeśli tak, kończy działanie programu z kodem wyjścia @p EXIT_FAILURE.
  * @param[in] object – wskaźnik na zaalokowany obiekt w pamięci.
  */
 static inline void check_for_successful_alloc(void *object) {
