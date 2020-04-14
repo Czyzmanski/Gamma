@@ -59,10 +59,10 @@ struct gamma {
 
 /** @brief Tworzy nowy obszar.
  * Czyni pole wskazywane przez @p f korzeniem nowego obszaru: ustawia składową
- * @p rank pola wskazywanego przez @p f na 0 raz ustawia składową @p root pola
- * wskazywanego przez @p f na NULL. Zwiększa o 1 wartość składowej @p areas
- * gracza wskazywanego przez @p owner będącego właścicielem wyżej wspomnianego
- * pola.
+ * @ref field::rank pola wskazywanego przez @p f na 0 oraz ustawia składową
+ * @ref field::root pola wskazywanego przez @p f na NULL. Zwiększa o 1 wartość
+ * składowej @ref player::areas gracza wskazywanego przez @p owner będącego
+ * właścicielem wyżej wspomnianego pola.
  * @param[in,out] f – wskaźnik na strukturę przechowującą stan pola.
  */
 static void area_new(field_t *f) {
@@ -76,8 +76,9 @@ static void area_new(field_t *f) {
 /** @brief Znajduje korzeń obszaru.
  * Rekurencyjnie znajduje korzeń @p root obszaru do którego należy pole
  * wskazywane przez @p f.
- * Dokonuje kompresji ścieżki od @p f do @p root, ustawiając składową @p parent
- * w każdym polu na tej ścieżce na @p root, z wyjątkiem samego korzenia @p root.
+ * Dokonuje kompresji ścieżki od @p f do @p root, ustawiając składową
+ * @ref field::parent w każdym polu na tej ścieżce na @p root, z wyjątkiem
+ * samego korzenia @p root.
  * @param[in,out] f – wskaźnik na strukturę przechowującą stan pola.
  * @return Wskaźnik na strukturę przechowującą stan pola będącego korzeniem
  * obszaru do którego należy pole wskazywane przez @p f.
@@ -94,15 +95,16 @@ static field_t *area_find_root(field_t *f) {
 }
 
 /** @brief Łączy dwa obszary w jeden według rangi.
- * Ustawia wskaźnik @p parent pola wskazywanego przez @p f1_root, będącego korzeniem
- * pierwszego obszaru, do którego należy pole wskazywane przez @p f1, na pole
- * wskazywane przez @p f2_root, będące korzeniem drugiego obszaru, do którego należy
- * pole wskazywane przez @p f2, jeśli ranga @p f1_root_rank korzenia pierwszego
- * obszaru jest mniejsza od rangi @p f2_root_rank korzenia drugiego obszaru.
- * W przeciwnym razie, ustawia wskaźnik @p parent pola wskazywanego przez @p f2_root
- * na @p f1_root. Jeśli wartość @p f1_root_rank jest równa wartości @p f2_root_rank,
- * zwiększa rangę korzenia pierwszego obszaru, dodając 1 do wartości składowej
- * @p rank pola wskazywanego przez @p f1_root.
+ * Ustawia wskaźnik @ref field::parent pola wskazywanego przez @p f1_root,
+ * będącego korzeniem pierwszego obszaru, do którego należy pole wskazywane
+ * przez @p f1, na pole wskazywane przez @p f2_root, będące korzeniem drugiego
+ * obszaru, do którego należy pole wskazywane przez @p f2, jeśli ranga
+ * @p f1_root_rank korzenia pierwszego obszaru jest mniejsza od rangi
+ * @p f2_root_rank korzenia drugiego obszaru.
+ * W przeciwnym razie, ustawia wskaźnik @ref field::parent pola wskazywanego
+ * przez @p f2_root na @p f1_root. Jeśli wartość @p f1_root_rank jest równa
+ * wartości @p f2_root_rank, zwiększa rangę korzenia pierwszego obszaru, dodając
+ * 1 do wartości składowej @ref field::rank pola wskazywanego przez @p f1_root.
  * @param[in,out] f1 – wskaźnik na strukturę przechowującą stan pola
  *                     należącego do pierwszego obszaru,
  * @param[in,out] f2 – wskaźnik na strukturę przechowującą stan pola
@@ -209,15 +211,16 @@ static inline bool valid_busy_field(gamma_t *g, int64_t x, int64_t y) {
            && g->board[y][x] != NULL && field_owner(g->board[y][x]) != NULL;
 }
 
-/** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i należy do gracza @p p.
+/** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i należy do
+ * gracza wskazywanego przez @p p.
  * Sprawdza, czy numer kolumny @p x jest liczbą całkowitą nieujemną
  * mniejszą od wartości @p width z funkcji @ref gamma_new.
  * Sprawdza, czy numer wiersza @p y jest liczbą całkowitą nieujemną
  * mniejszą od wartości @p height z funkcji @ref gamma_new.
  * Sprawdza, czy pole zostało już stworzone, tzn. czy wartość wskaźnika
- * @p g->board[y][x] jest różna od NULL oraz czy właścicielem pola jest gracz @p p,
- * tzn. czy wskaźnik @p owner będący składową pola na które wskazuje wskaźnik
- * @p g->board[y][x] jest równy @p p.
+ * @p g->board[y][x] jest różna od NULL oraz czy właścicielem pola jest gracz
+ * wskazywany przez @p p, tzn. czy wskaźnik @ref field::owner będący składową
+ * pola na które wskazuje wskaźnik @p g->board[y][x] jest równy @p p.
  * @param[in] g – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] x – numer kolumny, liczba nieujemna mniejsza od wartości
  *                @p width z funkcji @ref gamma_new,
@@ -263,8 +266,8 @@ static uint8_t player_adjacent_fields(gamma_t *g, player_t *p,
  * mniejszą od wartości @p height z funkcji @ref gamma_new.
  * Sprawdza, czy pole nie zostało jeszcze stworzone, tzn. czy wartość wskaźnika
  * @p g->board[y][x] jest równa NULL, lub, w przeciwnym razie, czy pole nie ma
- * przypisanego właściciela, tzn. czy wskaźnik @p owner będący składową pola
- * na które wskazuje @p g->board[y][x] jest równy NULL.
+ * przypisanego właściciela, tzn. czy wskaźnik @ref field::owner będący składową
+ * pola na które wskazuje @p g->board[y][x] jest równy NULL.
  * Sprawdza, czy liczba pól sąsiadujących z polem (@p x, @p y), zajętych przez
  * gracza wskazywanego przez @p owner jest równa 0.
  * @param[in] g     – wskaźnik na strukturę przechowującą stan gry,
@@ -331,11 +334,11 @@ static inline bool valid_player(gamma_t *g, int64_t player) {
     return 1 <= player && player <= g->players;
 }
 
-/** Dodaje gracza, jeśli ten nie postawił jeszcze żadnego pionka.
+/** @brief Dodaje gracza, jeśli ten nie postawił jeszcze żadnego pionka.
  * Jeśli struktura przechowująca stan gracza o numerze @p player nie została
  * jeszcze stworzona, ponieważ gracz ten nie postawił jeszcze żadnego pionka,
  * alokuje pamięć na tę strukturę i zapisuje jej adres w pamięci w tablicy
- * @p players_arr pod indeksem @p player.
+ * @ref gamma::players_arr pod indeksem @p player.
  * Nic nie robi, jeśli taka struktura została już stworzona.
  * @param[in,out] g  – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] player – numer gracza, liczba dodatnia niewiększa od wartości
@@ -555,8 +558,8 @@ static player_t **unique_neighbours(gamma_t *g, uint32_t x, uint32_t y) {
  * pionek na co najmniej jednym polu sąsiadującym z polem wskazywanym przez @p f,
  * które było dotąd wolne i na którym postawiono właśnie pionek, reprezentowanym
  * przez tablicę wskaźników @p neighbours.
- * Zmniejsza o 1 wartość składowej @p perimeter każdego z graczy, którego adres
- * został dodany do tablicy @p neighbours.
+ * Zmniejsza o 1 wartość składowej @ref player::perimeter każdego z graczy,
+ * którego adres został dodany do tablicy @p neighbours.
  * Zwalnia tablicę @p neighbours.
  * @param[in] g              – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] f              – wskaźnik na strukturę przechowującą stan pola.
@@ -651,9 +654,9 @@ static void gamma_move_update(gamma_t *g, uint32_t player, uint32_t x, uint32_t 
 
 /** @brief Przeszukuje obszar zajęty przez gracza.
  * Wykonuje przeszukiwanie w głąb (DFS) obszaru zajętego przez gracza wskazywanego
- * przez @p owner, zaczynając od pola (@p x, @p y) i ustawiając status każdego
- * odwiedzonego pola w tym obszarze na wartość @p desired, równą jednej z wartości
- * zdefiniowanych w wyliczeniu @ref status.
+ * przez @p owner, zaczynając od pola (@p x, @p y) i ustawiając status
+ * @ref field::status każdego odwiedzonego pola w tym obszarze na wartość
+ * @p desired, równą jednej z wartości zdefiniowanych w wyliczeniu @ref status.
  * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] owner      – wskaźnik na strukturę przechowującą stan gracza,
  *                         będącego właścicielem pola (@p x, @p y),
@@ -719,7 +722,7 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
  * Sprawdza, czy złoty ruch jest legalny ze strony gracza, który traci pionek
  * z pola (@p x, @p y).
  * Zakłada, że pole (@p x, @p y) jest poprawnym, zajętym polem, ponieważ sprawdzenie
- * tych warunków następuje w funkcji @ref gamma_golden_possible.posiadaniu
+ * tych warunków następuje w funkcji @ref gamma_golden_possible.
  * Sprawdza, czy po utracie pola (@p x, @p y) przez jego właściciela liczba zajętych
  * przez niego obszarów nie przekroczy maksymalnej dozwolonej liczby obszarów
  * zajętych przez jednego gracza.
@@ -788,10 +791,10 @@ static bool player_golden_move_legal(gamma_t *g, player_t *p,
 
 /** @brief Zmienia rangę oraz rodzica w każdym polu obszaru.
  * Wykonuje przeszukiwanie w głąb (DFS) obszaru zajętego przez gracza wskazywanego
- * przez @p owner, zaczynając od pola (@p x, @p y) i ustawiając składową @p rank
- * każdego odwiedzonego pola na 0 oraz składową @p parent na wartość równą
- * zmiennej @p parent będącej parametrem procedury.
- * Ustawia status @p status każdego odwiedzonego pola na @p MODIFIED.
+ * przez @p owner, zaczynając od pola (@p x, @p y) i ustawiając składową
+ * @ref field::rank każdego odwiedzonego pola na 0 oraz składową @ref field::parent
+ * na wartość równą zmiennej @p parent będącej parametrem procedury.
+ * Ustawia status @ref field::status każdego odwiedzonego pola na @p MODIFIED.
  * @param[in,out] g      – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] owner      – wskaźnik na strukturę przechowującą stan gracza,
  *                         będącego właścicielem pola (@p x, @p y),
@@ -825,9 +828,9 @@ static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
  * Jeżeli pole (@p x, @p y) należy do gracza wskazywanego przez @p old_owner,
  * będącego graczem który w wyniku złotego ruchu wykonanego przez przeciwnika
  * stracił sąsiadujące pole, czyni pole (@p x, @p y) korzeniem nowego obszaru,
- * ustawiając jego rangę @p rank na 0 oraz rodzica @p parent na NULL, po czym
- * wywołuje funkcję @ref area_update_parent_and_rank dla każdego sąsiedniego pola,
- * przekazując jako parametr @p parent tej funkcji wskaźnik do struktury
+ * ustawiając jego rangę @ref field::rank na 0 oraz rodzica @p parent na NULL,
+ * po czym wywołuje funkcję @ref area_update_parent_and_rank dla każdego sąsiedniego
+ * pola, przekazując jako parametr @p parent tej funkcji wskaźnik do struktury
  * przechowującej stan pola (@p x, @p y).
  * Oblicza liczbę obszarów zajętych przez gracza wskazywanego przez @p old_owner
  * po wyodrębnieniu wszystkich nowych obszarów.
@@ -936,7 +939,7 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
 ///@{
 
 /** @brief Usuwa wiersze planszy.
- * Usuwa @p num_of_rows początkowych wierszy tablicy @p boards wskaźników
+ * Usuwa @p num_of_rows początkowych wierszy tablicy @ref  gamma::board wskaźników
  * do struktur przechowujących stany pól, reprezentującej planszę, na której
  * toczy się rozgrywka.
  * Zwalnia pamięć po każdym polu, którego adres był zapisany w jednym z usuwanych
@@ -948,10 +951,10 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
  *                              wartości @p width z funkcji @ref gamma_new,
  *                              reprezentująca planszę na której odbywa się
  *                              rozgrywka,
- * @param width[in]           – długość każdego z wierszy tablicy @p board,
+ * @param width[in]           – długość każdego z wierszy tablicy @ref gamma::board,
  *                              równa wartości @p width z funkcji @ref gamma_new,
- * @param num_of_rows[in]     – liczba wierszy tablicy @p board, które należy
- *                              usunąć.
+ * @param num_of_rows[in]     – liczba wierszy tablicy @ref gamma::board,
+ *                              które należy usunąć.
  */
 static void board_remove_rows(field_t ***board, uint32_t width,
                               uint32_t num_of_rows) {
