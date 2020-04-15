@@ -1040,7 +1040,7 @@ static void board_fill_string_less_than_10_players(gamma_t *g, char *board) {
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
         for (uint32_t x = 0; x < g->width; x++, filled++) {
             if (g->board[y][x] == NULL) {
-                board[filled] = '.';
+                board[filled] = FREE_FIELD;
             }
             else {
                 board[filled] = player_number(field_owner(g->board[y][x])) + '0';
@@ -1072,9 +1072,29 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
     return board;
 }
 
+/** @brief Dodaje do buforu numer gracza.
+ * Dodaje do buforu @p board zawierającego tekstowy opis aktualnego stanu planszy,
+ * poczynając od indeksu @p filled, kolejne cyfry numeru gracza @p player, wpierw
+ * dodając tyle znaków @p PADDING, aby liczba wszystkich dodanych znaków była równa
+ * wartości @p PLAYER_MX_DIGITS.
+ * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy,
+ * @param[in] filled          – indeks pierwszego wolnego miejsca w buforze,
+ *                              wartość równa liczbie dotychczas dodanych
+ *                              znaków do bufora, miejsce, od którego ma się
+ *                              zacząć dodawanie nowych znaków,
+ * @param[in] player          – numer gracza, liczba dodatnia niewiększa od
+ *                              wartości @p players z funkcji @ref gamma_new,
+ * @param[in] col_width       – szerokość kolumny w tekstowym opisie stanu
+ *                              planszy, równa liczbie cyfr potrzebnych do
+ *                              zapisu największego numeru gracza biorącego
+ *                              udział w rozgrywce, licza niewiększa od wartości
+ *                              @p PLAYER_MX_DIGITS.
+ * @return Wartość zmiennej @p filled, równa indeksowi pierwszego wolnego miejsca
+ * w buforze @p board po dodaniu do niego numeru gracza.
+ */
 uint64_t board_fill_string_add_player(char *board, uint64_t filled,
-                                      uint32_t player, uint8_t col_width,
-                                      char digits[PLAYER_MX_DIGITS]) {
+                                      uint32_t player, uint8_t col_width) {
+    char digits[PLAYER_MX_DIGITS];
     uint8_t added = 0;
 
     while (player > 0) {
@@ -1096,11 +1116,18 @@ uint64_t board_fill_string_add_player(char *board, uint64_t filled,
 /** @brief Wypełnia bufor opisujący stan planszy.
  * Wypełnia bufor @p board opisujący stan planszy w przypadku, kiedy liczba
  * graczy jest niemniejsza niż 10.
- * Wszystkie pola mają szerokość równą @p FIELD_WIDTH, z wyrównaniem do prawej
- * strony, z wypełnieniem z lewej spacjami do 10 znaków.
- * Kolumny oddzielone są pojedynczym znakiem spacji.
+ * Wszystkie pola mają szerokość równą @p col_width, równą liczbie cyfr
+ * potrzebnych do zapisania największego numeru gracza biorącego udział
+ * w rozgrywce, z wyrównaniem do prawej strony, z wypełnieniem z lewej znakami
+ * @p PADDING do @p col_width znaków.
+ * Kolumny oddzielone są pojedynczym znakiem @p PADDING.
  * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
- * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy.
+ * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy,
+ * @param[in] col_width       – szerokość kolumny w tekstowym opisie stanu
+ *                              planszy, równa liczbie cyfr potrzebnych do
+ *                              zapisu największego numeru gracza biorącego
+ *                              udział w rozgrywce, licza niewiększa od wartości
+ *                              @p PLAYER_MX_DIGITS.
  */
 static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
                                                   uint8_t col_width) {
@@ -1116,10 +1143,9 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
                 filled++;
             }
             else {
-                char digits[PLAYER_MX_DIGITS];
                 uint32_t player = player_number(field_owner(g->board[y][x]));
-                filled = board_fill_string_add_player(board, filled, player,
-                                                      col_width, digits);
+                filled = board_fill_string_add_player(board, filled,
+                                                      player, col_width);
             }
 
             if (x < g->width - 1) {
@@ -1140,9 +1166,14 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
  * Wszystkie pola mają szerokość równą @p FIELD_WIDTH, z wyrównaniem do prawej
  * strony, z wypełnieniem z lewej spacjami do 10 znaków.
  * Kolumny oddzielone są pojedynczym znakiem spacji.
- * @param[in] g         – wskaźnik na strukturę przechowującą stan gry,
- * @param[in] board_len – długość, jaką ma mieć bufor zawierający
- *                        napis opisujący planszę.
+ * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] board_len       – długość, jaką ma mieć bufor zawierający
+ *                              napis opisujący planszę,
+ * @param[in] col_width       – szerokość kolumny w tekstowym opisie stanu
+ *                              planszy, równa liczbie cyfr potrzebnych do
+ *                              zapisu największego numeru gracza biorącego
+ *                              udział w rozgrywce, licza niewiększa od wartości
+ *                              @p PLAYER_MX_DIGITS.
  * @return Wskaźnik na zaalokowany bufor zawierający napis opisujący stan
  * planszy lub NULL, jeśli nie udało się zaalokować pamięci.
  */
@@ -1333,6 +1364,8 @@ char *gamma_board(gamma_t *g) {
         uint8_t col_width = 0;
         uint32_t mx_player = g->players;
 
+        // Oblicza liczbę cyfr potrzebnych do zapisu największego numeru gracza
+        // biorącego udział w rozgrywce, zapisuje ją w zmiennej col_width.
         while (mx_player > 0) {
             col_width++;
             mx_player /= 10;
