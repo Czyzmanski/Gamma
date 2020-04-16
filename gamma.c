@@ -39,17 +39,13 @@
 
 /**
  * Struktura przechowująca stan gry.
- * Typ składowych @ref gamma::width, @ref gamma::height oraz @ref gamma::players to
- * @p uint64_t, tak, aby nie trzeba było rzutować tych składowych na @p uint64_t,
- * kiedy wynik wyrażenia z udziałem tych składowych może być większy niż
- * wartość @p UINT32_MAX.
  */
 struct gamma {
-    uint64_t width;         /**< Szerokość planszy, liczba dodatnia równa wartości
+    uint32_t width;         /**< Szerokość planszy, liczba dodatnia równa wartości
                              *   @p width z funkcji @ref gamma_new. */
-    uint64_t height;        /**< Wysokość planszy, liczba dodatnia równa wartości
+    uint32_t height;        /**< Wysokość planszy, liczba dodatnia równa wartości
                              *   @p height z funkcji @ref gamma_new. */
-    uint64_t players;       /**< Liczba graczy, liczba dodatnia równa wartości
+    uint32_t players;       /**< Liczba graczy, liczba dodatnia równa wartości
                              *   @p players z funkcji @ref gamma_new. */
     uint32_t areas;         /**< Maksymalna liczba obszarów, jakie może posiadać
                              *   gracz, liczba dodatnia równa wartości @p areas
@@ -1227,7 +1223,7 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
         return false;
     }
     else {
-        g->players_arr = calloc(players + 1, sizeof(player_t *));
+        g->players_arr = calloc((uint64_t) players + 1, sizeof(player_t *));
 
         if (g->players_arr == NULL) {
             return false;
@@ -1349,7 +1345,7 @@ uint64_t gamma_free_fields(gamma_t *g, uint32_t player) {
     else {
         player_t *p = g->players_arr[player];
         if (p == NULL || player_areas(p) < g->areas) {
-            return g->width * g->height - g->busy_fields;
+            return (uint64_t) g->width * g->height - g->busy_fields;
         }
         else {
             return player_perimeter(p);
@@ -1362,7 +1358,8 @@ char *gamma_board(gamma_t *g) {
         return NULL;
     }
     else if (g->players < 10) {
-        return gamma_board_less_than_10_players(g, (g->width + 1) * g->height + 1);
+        return gamma_board_less_than_10_players(g, ((uint64_t) g->width + 1) *
+                                                   g->height + 1);
     }
     else {
         uint8_t col_width = 0;
