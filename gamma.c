@@ -39,18 +39,22 @@
 
 /**
  * Struktura przechowująca stan gry.
+ * Typ składowych @ref gamma::width, @ref gamma::height oraz @ref gamma::players to
+ * @p uint64_t, tak, aby nie trzeba było rzutować tych składowych na @p uint64_t,
+ * kiedy wynik wyrażenia z udziałem tych składowych może być większy niż
+ * wartość @p UINT32_MAX.
  */
 struct gamma {
-    uint32_t width;         /**< Szerokość planszy, liczba dodatnia równa wartości
+    uint64_t width;         /**< Szerokość planszy, liczba dodatnia równa wartości
                              *   @p width z funkcji @ref gamma_new. */
-    uint32_t height;        /**< Wysokość planszy, liczba dodatnia równa wartości
+    uint64_t height;        /**< Wysokość planszy, liczba dodatnia równa wartości
                              *   @p height z funkcji @ref gamma_new. */
-    uint32_t players;       /**< Liczba graczy, liczba dodatnia równa wartości
+    uint64_t players;       /**< Liczba graczy, liczba dodatnia równa wartości
                              *   @p players z funkcji @ref gamma_new. */
     uint32_t areas;         /**< Maksymalna liczba obszarów, jakie może posiadać
                              *   gracz, liczba dodatnia równa wartości @p areas
                              *   z funkcji @ref gamma_new. */
-    uint32_t busy_fields;   /**< Liczba wszystkich zajętych pól na planszy. */
+    uint64_t busy_fields;   /**< Liczba wszystkich zajętych pól na planszy. */
     field_t ***board;       /**< Wskaźnik do tablicy o @p height wierszach
                              *   i @p width kolumnach reprezentującej planszę
                              *   na której rozgrywana jest gra, przechowującej
@@ -388,7 +392,7 @@ static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
     uint32_t x = field_x(f);
     uint32_t y = field_y(f);
     player_t *owner = field_owner(f);
-    uint32_t perimeter = player_perimeter(owner);
+    uint64_t perimeter = player_perimeter(owner);
 
     field_set_owner(f, NULL);
 

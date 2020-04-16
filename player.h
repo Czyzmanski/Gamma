@@ -70,7 +70,7 @@ void player_set_areas(player_t *p, uint32_t areas);
  * @return Liczba wolnych pól sąsiadujących z co najmniej jednym polem zajętym
  * przez gracza wskazywanego przez @p p.
  */
-uint32_t player_perimeter(player_t *p);
+uint64_t player_perimeter(player_t *p);
 
 /** @brief Aktualizuje obwód gracza.
  * Przypisuje składowej @p perimeter gracza wskazywanego przez @p p wartość
@@ -80,7 +80,7 @@ uint32_t player_perimeter(player_t *p);
  *                              jednym polem zajętym przez gracza wskazywanego
  *                              przez @p p.
  */
-void player_set_perimeter(player_t *p, uint32_t perimeter);
+void player_set_perimeter(player_t *p, uint64_t perimeter);
 
 /** @brief Sprawdza, czy gracz nie wykonał jeszcze złotego ruchu.
  * Sprawdza, czy gracz wskazywany przez @p p nie wykonał w tej rozgrywce

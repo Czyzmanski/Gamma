@@ -19,7 +19,7 @@ struct player {
                            *   @p players z funkcji @ref gamma_new. */
     uint64_t busy_fields; /**< Liczba pól zajętych przez gracza. */
     uint32_t areas;       /**< Liczba obszarów zajętych przez gracza. */
-    uint32_t perimeter;   /**< Obwód gracza, liczba wolnych pól sąsiadujących
+    uint64_t perimeter;   /**< Obwód gracza, liczba wolnych pól sąsiadujących
                            *   z przynajmniej jednym polem gracza. */
     bool golden_possible; /**< Wartość @p true, jeżeli gracz nie wykonał jeszcze
                            *   złotego ruchu, a @p false w przeciwnym przypadku. */
@@ -59,11 +59,11 @@ void player_set_areas(player_t *p, uint32_t areas) {
     p->areas = areas;
 }
 
-uint32_t player_perimeter(player_t *p) {
+uint64_t player_perimeter(player_t *p) {
     return p->perimeter;
 }
 
-void player_set_perimeter(player_t *p, uint32_t perimeter) {
+void player_set_perimeter(player_t *p, uint64_t perimeter) {
     p->perimeter = perimeter;
 }
 
