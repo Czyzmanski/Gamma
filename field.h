@@ -11,9 +11,9 @@
 #include "player.h"
 
 /**
- * Struktura przechowująca stan pola (@p x, @p y).
+ * Typ wyliczeniowy pozwalający na przechowywanie informacji o statusie pola.
  */
-typedef struct field field_t;
+typedef enum status status_t;
 
 /**
  * Wyliczenia pozwalajace na przechowywanie informacji o statusie
@@ -32,37 +32,73 @@ enum status {
 };
 
 /**
- * Typ wyliczeniowy pozwalający na przechowywanie informacji o statusie pola.
+ * Typ struktury przechowującej stan pola (@p x, @p y).
  */
-typedef enum status status_t;
+typedef struct field field_t;
 
-/** @brief Tworzy strukturę przechowującą stan pola (@p x, @p y).
- * Alokuje pamięć na nową strukturę przechowującą stan pola (@p x, @p y).
- * Inicjuje tę strukturę tak, aby reprezentowała początkowy stan pola.
+/**
+ * Struktura przechowująca stan pola (@p x, @p y).
+ */
+struct field {
+    uint32_t x;      /**< Numer kolumny, liczba nieujemna mniejsza od wartości
+                      *   @p width z funkcji @ref gamma_new. */
+    uint32_t y;      /**< Numer wiersza, liczba nieujemna mniejsza od wartości
+                      *   @p height z funkcji @ref gamma_new. */
+    player_t *owner; /**< Wskaźnik do właściciela pola, gracza posiadającego pionek
+                      *   na tym polu. */
+    field_t *parent; /**< Wskaźnik do rodzica, pewnego pola znajdującego się w tym
+                      *   samym obszarze co pole (@p x, @p y) lub NULL, jeśli
+                      *   pole (@p x, @p y) jest korzeniem obszaru gracza
+                      *   wskazywanego przez @p owner. Pozwala na implementację
+                      *   operacji na obszarach zajętych przez tego gracza przy
+                      *   pomocy struktury Find-Union. */
+    uint32_t rank;   /**< Ranga pola, wartość wykorzystywana przy operacji łączenia
+                      *   dwóch obszarów zajętych przez gracza wskazywanego przez
+                      *   @p owner w jeden. Pozwala na implementację operacji na
+                      *   obszarach zajętych przez tego gracza przy pomocy struktury
+                      *   Find-Union. */
+    status_t status; /**< Status pola, jedna z wartości zdefiniowanych w wyliczeniu
+                      *   @ref status. Pozwala na odróżnienie, które pola zostały
+                      *   już uwzględnione w trakcie przeszukiwania w głąb (DFS)
+                      *   w implementacji funkcji @ref gamma_golden_move. */
+};
+
+/** @brief Inicjuje strukturę przechowującą stan pola (@p x, @p y).
+ * Inicjuje strukturę wskazywaną przez @p f tak, aby reprezentowała początkowy
+ * stan pola.
+ * @param[in,out] f     – wskaźnik na strukturę mającą przechowywać stan
+ *                        pola (@p x, @p y),
  * @param[in] x         – numer kolumny, liczba nieujemna mniejsza od wartości
  *                        @p width z funkcji @ref gamma_new
  * @param[in] y         – numer wiersza, liczba nieujemna mniejsza od wartości
  *                        @p height z funkcji @ref gamma_new,
- * @param[in] owner     – wskaźnik na strukturę przechowującą stan gracza,
- *                        który posiada pionek na polu (@p x, @p y).
- * @return Wskaźnik na utworzoną strukturę lub NULL, gdy nie udało się
- * zaalokować pamięci.
  */
-field_t *field_new(uint32_t x, uint32_t y, player_t *owner);
+static inline void field_init(field_t *f, uint32_t x, uint32_t y) {
+    f->x = x;
+    f->y = y;
+    f->owner = NULL;
+    f->parent = NULL;
+    f->rank = 0;
+    f->status = UNCHECKED;
+}
 
 /** @brief Podaje współrzędną @p x pola (@p x, @p y).
  * Podaje numer kolumny @p x na którym znajduje się pole wskazywane przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Numer kolumny @p x na którym znajduje się pole wskazywane przez @p f.
  */
-uint32_t field_x(field_t *f);
+static inline uint32_t field_x(field_t *f) {
+    return f->x;
+}
 
 /** @brief Podaje współrzędną @p y pola (@p x, @p y).
  * Podaje numer wiersza @p y na którym znajduje się pole wskazywane przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Numer wiersza @p y na którym znajduje się pole wskazywane przez @p f.
  */
-uint32_t field_y(field_t *f);
+static inline uint32_t field_y(field_t *f) {
+    return f->y;
+}
 
 /** @brief Podaje wskaźnik do właściciela pola.
  * Podaje wskaźnik @p owner na strukturę gracza mającego pionek na polu
@@ -71,7 +107,9 @@ uint32_t field_y(field_t *f);
  * @return Wskaźnik @p owner na strukturę gracza mającego pionek na polu
  * wskazywanym przez @p f.
  */
-player_t *field_owner(field_t *f);
+static inline player_t *field_owner(field_t *f) {
+    return f->owner;
+}
 
 /** @brief Aktualizuje właściciela pola.
  * Przypisuje polu właściciela, czyli gracza, którego pionek stoi na polu
@@ -82,7 +120,9 @@ player_t *field_owner(field_t *f);
  * @param[in] owner     – wskaźnik na strukturę przechowującą stan gracza,
  *                        którego pionek znajduje się na polu @p f.
  */
-void field_set_owner(field_t *f, player_t *owner);
+static inline void field_set_owner(field_t *f, player_t *owner) {
+    f->owner = owner;
+}
 
 /** @brief Podaje wskaźnik do rodzica pola.
  * Podaje wskaźnik @p parent na strukturę pola będącego rodzicem pola
@@ -91,7 +131,9 @@ void field_set_owner(field_t *f, player_t *owner);
  * @return Wskaźnik @p parent na strukturę pola będącego rodzicem pola
  * wskazywanego przez @p f.
  */
-field_t *field_parent(field_t *f);
+static inline field_t *field_parent(field_t *f) {
+    return f->parent;
+}
 
 /** @brief Aktualizuje rodzica pola.
  * Przypisuje wskaźnikowi @p parent, będącego składową struktury pola wskazywanej
@@ -100,14 +142,18 @@ field_t *field_parent(field_t *f);
  * @param[in] parent    – wskaźnik na strukturę przechowującą stan pola,
  *                        które ma się stać rodzicem pola wskazywanego przez @p f.
  */
-void field_set_parent(field_t *f, field_t *parent);
+static inline void field_set_parent(field_t *f, field_t *parent) {
+    f->parent = parent;
+}
 
 /** @brief Podaje rangę pola.
  * Podaje wartość @p rank pola wskazywanego przez @p f.
  * @param[in] f         – wskaźnik na strukturę przechowującą stan pola.
  * @return Wartość @p rank pola wskazywanego przez @p f.
  */
-uint32_t field_rank(field_t *f);
+static inline uint32_t field_rank(field_t *f) {
+    return f->rank;
+}
 
 /** @brief Aktualizuje rangę pola.
  * Przypisuje składowej @p rank pola wskazywanego przez @p f wartość zmiennej
@@ -115,7 +161,9 @@ uint32_t field_rank(field_t *f);
  * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola,
  * @param[in] rank      – ranga, liczba całkowita nieujemna.
  */
-void field_set_rank(field_t *f, uint32_t rank);
+static inline void field_set_rank(field_t *f, uint32_t rank) {
+    f->rank = rank;
+}
 
 /** @brief Podaje status pola.
  * Podaje wartość @p status pola wskazywanego przez @p f.
@@ -123,7 +171,9 @@ void field_set_rank(field_t *f, uint32_t rank);
  * @return Wartość @p status pola wskazywanego przez @p f, jedna z wartości
  * wyliczenia @ref status.
  */
-status_t field_status(field_t *f);
+static inline status_t field_status(field_t *f) {
+    return f->status;
+}
 
 /** @brief Aktualizuje status pola.
  * Przypisuje składowej @p status pola wskazywanego przez @p f wartość zmiennej
@@ -131,13 +181,8 @@ status_t field_status(field_t *f);
  * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola,
  * @param[in] status    – status pola, jedna z wartości wyliczenia @ref status.
  */
-void field_set_status(field_t *f, status_t status);
-
-/** @brief Usuwa strukturę przechowującą stan pola.
- * Usuwa z pamięci strukturę wskazywaną przez @p f.
- * Nic nie robi, jeśli wskaźnik ten ma wartość NULL.
- * @param[in] f        – wskaźnik na usuwaną strukturę.
- */
-void field_delete(field_t *f);
+static inline void field_set_status(field_t *f, status_t status) {
+    f->status = status;
+}
 
 #endif // FIELD_H

@@ -11,19 +11,37 @@
 #include <stdbool.h>
 
 /**
- * Struktura przechowująca stan gracza.
+ * Typ struktury przechowującej stan gracza.
  */
 typedef struct player player_t;
 
-/** @brief Tworzy strukturę przechowującą stan gracza.
- * Alokuje pamięć na nową strukturę przechowującą stan gracza.
- * Inicjuje tę strukturę tak, aby reprezentowała początkowy stan gracza.
+/**
+ * Struktura przechowująca stan gracza.
+ */
+struct player {
+    uint32_t number;      /**< Numer gracza, liczba dodatnia niewiększa od wartości
+                           *   @p players z funkcji @ref gamma_new. */
+    uint64_t busy_fields; /**< Liczba pól zajętych przez gracza. */
+    uint32_t areas;       /**< Liczba obszarów zajętych przez gracza. */
+    uint64_t perimeter;   /**< Obwód gracza, liczba wolnych pól sąsiadujących
+                           *   z przynajmniej jednym polem gracza. */
+    bool golden_possible; /**< Wartość @p true, jeżeli gracz nie wykonał jeszcze
+                           *   złotego ruchu, a @p false w przeciwnym przypadku. */
+};
+
+/** @brief Inicjuje strukturę przechowującą stan gracza.
+ * Inicjuje strukturę wskazywaną przez @p p tak, aby reprezentowała początkowy
+ * stan gracza.
  * @param[in] number          – numer gracza, liczba dodatnia niewiększa od
  *                              wartości @p players z funkcji @ref gamma_new.
- * @return Wskaźnik na utworzoną strukturę lub NULL, gdy nie udało się
- * zaalokować pamięci.
  */
-player_t *player_new(uint32_t number);
+static inline player_t *player_init(player_t *p, uint32_t number) {
+    p->number = number;
+    p->busy_fields = 0;
+    p->areas = 0;
+    p->perimeter = 0;
+    p->golden_possible = true;
+}
 
 /** @brief Podaje numer gracza.
  * Podaje numer gracza wskazywanego przez @p p.
@@ -31,14 +49,18 @@ player_t *player_new(uint32_t number);
  * @return Numer gracza wskazywanego przez @p p, liczba dodatnia niewiększa
  * od wartości @p players z funkcji @ref gamma_new.
  */
-uint32_t player_number(player_t *p);
+static inline uint32_t player_number(player_t *p) {
+    return p->number;
+}
 
 /** @brief Podaje liczbę pól zajętych przez gracza.
  * Podaje liczbę pól zajętych przez gracza wskazywanego przez @p p.
  * @param[in] p               – wskaźnik na strukturę przechowującą stan gracza.
  * @return Liczba pól zajętych przez gracza wskazywanego przez @p p.
  */
-uint64_t player_busy_fields(player_t *p);
+static inline uint64_t player_busy_fields(player_t *p) {
+    return p->busy_fields;
+}
 
 /** @brief Aktualizuje liczbę zajętych przez gracza pól.
  * Przypisuje składowej @p busy_fields gracza wskazywanego przez @p p wartość
@@ -46,14 +68,18 @@ uint64_t player_busy_fields(player_t *p);
  * @param[in,out] p           – wskaźnik na strukturę przechowującą stan gracza,
  * @param[in] busy_fields     – liczba pól zajętych przez gracza.
  */
-void player_set_busy_fields(player_t *p, uint64_t busy_fields);
+static inline void player_set_busy_fields(player_t *p, uint64_t busy_fields) {
+    p->busy_fields = busy_fields;
+}
 
 /** @brief Podaje liczbę obszarów zajętych przez gracza.
  * Podaje liczbę obszarów zajętych przez gracza wskazywanego przez @p p.
  * @param[in] p               – wskaźnik na strukturę przechowującą stan gracza.
  * @return Liczba obszarów zajętych przez gracza wskazywanego przez @p p.
  */
-uint32_t player_areas(player_t *p);
+static inline uint32_t player_areas(player_t *p) {
+    return p->areas;
+}
 
 /** @brief Aktualizuje liczbę zajętych przez gracza obszarów.
  * Przypisuje składowej @p areas gracza wskazywanego przez @p p wartość
@@ -61,7 +87,9 @@ uint32_t player_areas(player_t *p);
  * @param[in,out] p           – wskaźnik na strukturę przechowującą stan gracza,
  * @param[in] areas           – liczba obszarów zajętych przez gracza.
  */
-void player_set_areas(player_t *p, uint32_t areas);
+static inline void player_set_areas(player_t *p, uint32_t areas) {
+    p->areas = areas;
+}
 
 /** @brief Podaje obwód gracza.
  * Podaje obwód gracza wskazywanego przez @p p, czyli liczbę wolnych pól
@@ -70,7 +98,9 @@ void player_set_areas(player_t *p, uint32_t areas);
  * @return Liczba wolnych pól sąsiadujących z co najmniej jednym polem zajętym
  * przez gracza wskazywanego przez @p p.
  */
-uint64_t player_perimeter(player_t *p);
+static inline uint64_t player_perimeter(player_t *p) {
+    return p->perimeter;
+}
 
 /** @brief Aktualizuje obwód gracza.
  * Przypisuje składowej @p perimeter gracza wskazywanego przez @p p wartość
@@ -80,7 +110,9 @@ uint64_t player_perimeter(player_t *p);
  *                              jednym polem zajętym przez gracza wskazywanego
  *                              przez @p p.
  */
-void player_set_perimeter(player_t *p, uint64_t perimeter);
+static inline void player_set_perimeter(player_t *p, uint64_t perimeter) {
+    p->perimeter = perimeter;
+}
 
 /** @brief Sprawdza, czy gracz nie wykonał jeszcze złotego ruchu.
  * Sprawdza, czy gracz wskazywany przez @p p nie wykonał w tej rozgrywce
@@ -89,7 +121,9 @@ void player_set_perimeter(player_t *p, uint64_t perimeter);
  * @return Wartość @p true, jeśli gracz jeszcze nie wykonał w tej rozgrywce
  * złotego ruchu, a @p false w przeciwnym przypadku.
  */
-bool player_golden_possible(player_t *p);
+static inline bool player_golden_possible(player_t *p) {
+    return p->golden_possible;
+}
 
 /** @brief Aktualizuje możliwość wykonania złotego ruchu przez gracza.
  * Przypisuje składowej @p golden_possible gracza wskazywanego przez @p p
@@ -99,13 +133,8 @@ bool player_golden_possible(player_t *p);
  *                              złoty ruch w danej rozgrywce, a @p false wskazująca
  *                              przeciwnie.
  */
-void player_set_golden_possible(player_t *p, bool golden_possible);
-
-/** @brief Usuwa strukturę przechowującą stan gracza.
- * Usuwa z pamięci strukturę wskazywaną przez @p p.
- * Nic nie robi, jeśli wskaźnik ten ma wartość NULL.
- * @param[in] p        – wskaźnik na usuwaną strukturę.
- */
-void player_delete(player_t *p);
+static inline void player_set_golden_possible(player_t *p, bool golden_possible) {
+    p->golden_possible = golden_possible;
+}
 
 #endif // GAMMA_PLAYER_H

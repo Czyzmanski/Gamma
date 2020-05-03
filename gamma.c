@@ -51,24 +51,15 @@ struct gamma {
                              *   gracz, liczba dodatnia równa wartości @p areas
                              *   z funkcji @ref gamma_new. */
     uint64_t busy_fields;   /**< Liczba wszystkich zajętych pól na planszy. */
-    field_t ***board;       /**< Wskaźnik do tablicy o @p height wierszach
+    field_t **board;       /**<  Wskaźnik do tablicy o @p height wierszach
                              *   i @p width kolumnach reprezentującej planszę
                              *   na której rozgrywana jest gra, przechowującej
-                             *   w wierszu @p y i kolumnie @p x wskaźnik do
-                             *   struktury przechowującej stan pola (@p x, @p y)
-                             *   lub NULL, jeśli pole to nie zostało zajęte przez
-                             *   żadnego z graczy. */
-    player_t **players_arr; /**< Tablica wskaźników do struktur przechowujących
+                             *   w wierszu @p y i kolumnie @p x strukturę
+                             *   przechowującą stan pola (@p x, @p y). */
+    player_t *players_arr; /**<  Tablica struktur przechowujących
                              *   stan graczy biorących udział w rozgrywce,
                              *   o długości równej wartości o 1 większej niż wartość
-                             *   @p players z funkcji @ref gamma_new.
-                             *   Wartość wskaźnika @p players_arr[0] jest równa NULL,
-                             *   ponieważ nie ma gracza o numerze 0.
-                             *   Pod indeksem i, dla i dodatniego oraz niewiększego
-                             *   od wartości @p players z funkcji @ref gamma_new,
-                             *   znajduje się adres struktury przechowującej stan
-                             *   gracza o numerze i lub NULL, jeśli gracz ten jeszcze
-                             *   nie postawił żadnego pionka na którymś polu. */
+                             *   @p players z funkcji @ref gamma_new. */
 };
 
 /** @name Obszar
@@ -110,6 +101,7 @@ static field_t *area_find_root(field_t *f) {
     else {
         field_t *root = area_find_root(field_parent(f));
         field_set_parent(f, root);
+
         return root;
     }
 }
@@ -137,7 +129,6 @@ static bool area_merge(field_t *f1, field_t *f2) {
     field_t *f2_root = area_find_root(f2);
     uint32_t f1_root_rank = field_rank(f1_root);
     uint32_t f2_root_rank = field_rank(f2_root);
-
     if (f1_root == f2_root) {
         return false;
     }
@@ -151,6 +142,7 @@ static bool area_merge(field_t *f1, field_t *f2) {
                 field_set_rank(f1_root, f1_root_rank + 1);
             }
         }
+
         return true;
     }
 }
@@ -206,8 +198,7 @@ static inline bool valid_y(gamma_t *g, int64_t y) {
  * nie jest zajęte przez pewnego gracza, a @p false w przeciwnym przypadku.
  */
 static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
-    return valid_x(g, x) && valid_y(g, y)
-           && (g->board[y][x] == NULL || field_owner(g->board[y][x]) == NULL);
+    return valid_x(g, x) && valid_y(g, y) && field_owner(&(g->board[y][x])) == NULL);
 }
 
 /** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i zajęte.
@@ -1254,6 +1245,7 @@ void gamma_delete(gamma_t *g) {
         if (g->board != NULL) {
             board_remove_rows(g->board, g->width, g->height);
             free(g->board);
+
             if (g->players_arr != NULL) {
                 for (uint64_t i = 0; i <= g->players; i++) {
                     player_delete(g->players_arr[i]);
@@ -1356,7 +1348,7 @@ char *gamma_board(gamma_t *g) {
         }
 
         uint64_t board_len = (col_width + 1) * g->width * g->height + 1;
-        
+
         return gamma_board_at_least_10_players(g, board_len, col_width);
     }
 }
