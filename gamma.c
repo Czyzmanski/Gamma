@@ -256,9 +256,9 @@ static inline bool player_valid_field(gamma_t *g, player_t *p,
  * @return Liczba pól sąsiadujących z polem (@p x, @p y), które zostały zajęte
  * przez gracza wskazywanego przez @p p.
  */
-static uint8_t player_adjacent_fields(gamma_t *g, player_t *p,
+static unsigned player_adjacent_fields(gamma_t *g, player_t *p,
                                       uint32_t x, uint32_t y) {
-    uint8_t fields = 0;
+    unsigned fields = 0;
     fields += player_valid_field(g, p, x - 1, y);
     fields += player_valid_field(g, p, x + 1, y);
     fields += player_valid_field(g, p, x, y - 1);
@@ -309,9 +309,9 @@ static inline bool player_valid_free_single_field(gamma_t *g, player_t *owner,
  * przez żadnego gracza i które nie sąsiadują z żadnym polem zajętym przez gracza
  * wskazywanego przez @p owner.
  */
-static uint8_t player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
+static unsigned player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
                                                   uint32_t x, uint32_t y) {
-    uint8_t fields = 0;
+    unsigned fields = 0;
     fields += player_valid_free_single_field(g, owner, x - 1, y);
     fields += player_valid_free_single_field(g, owner, x + 1, y);
     fields += player_valid_free_single_field(g, owner, x, y - 1);
@@ -560,7 +560,7 @@ static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
     player_t *neighbours[MAX_NEIGHBOURS];
     add_unique_neighbours(g, field_x(f), field_y(f), neighbours);
 
-    for (uint8_t i = 0; i < MAX_NEIGHBOURS; i++) {
+    for (unsigned i = 0; i < MAX_NEIGHBOURS; i++) {
         if (neighbours[i] != NULL && neighbours[i] != owner) {
             player_set_perimeter(neighbours[i], player_perimeter(neighbours[i]) - 1);
         }
@@ -722,7 +722,7 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
  */
 static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
     player_t *victim = field_owner(&g->board[y][x]);
-    uint8_t mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
+    unsigned mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
     if (player_areas(victim) + mx_new_areas <= g->areas) {
         return true;
     }
@@ -1039,7 +1039,7 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
  * w buforze @p board po dodaniu do niego numeru gracza.
  */
 uint64_t board_fill_string_add_player(char *board, uint64_t filled,
-                                      uint32_t player, uint8_t col_width) {
+                                      uint32_t player, unsigned col_width) {
     char digits[PLAYER_MAX_DIGITS];
     unsigned added = 0;
     while (player > 0) {
