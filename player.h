@@ -35,7 +35,7 @@ struct player {
  * @param[in] number          – numer gracza, liczba dodatnia niewiększa od
  *                              wartości @p players z funkcji @ref gamma_new.
  */
-static inline player_t *player_init(player_t *p, uint32_t number) {
+static inline void player_init(player_t *p, uint32_t number) {
     p->number = number;
     p->busy_fields = 0;
     p->areas = 0;

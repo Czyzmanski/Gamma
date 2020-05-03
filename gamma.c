@@ -35,7 +35,7 @@
  * Maksymalna liczba cyfr, jaką może posiadać numer gracza, liczba równa
  * sufitowi logarytmu dziesiętnego z @p UINT32_MAX.
  */
-#define PLAYER_MX_DIGITS 10
+#define PLAYER_MAX_DIGITS 10
 
 /**
  * Struktura przechowująca stan gry.
@@ -198,7 +198,7 @@ static inline bool valid_y(gamma_t *g, int64_t y) {
  * nie jest zajęte przez pewnego gracza, a @p false w przeciwnym przypadku.
  */
 static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
-    return valid_x(g, x) && valid_y(g, y) && field_owner(&(g->board[y][x])) == NULL);
+    return valid_x(g, x) && valid_y(g, y) && field_is_free(&g->board[y][x]);
 }
 
 /** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i zajęte.
@@ -217,8 +217,7 @@ static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
  * jest zajęte przez pewnego gracza, a @p false w przeciwnym przypadku.
  */
 static inline bool valid_busy_field(gamma_t *g, int64_t x, int64_t y) {
-    return valid_x(g, x) && valid_y(g, y)
-           && g->board[y][x] != NULL && field_owner(g->board[y][x]) != NULL;
+    return valid_x(g, x) && valid_y(g, y) && field_owner(&g->board[y][x]) != NULL;
 }
 
 /** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i należy do
@@ -242,8 +241,7 @@ static inline bool valid_busy_field(gamma_t *g, int64_t x, int64_t y) {
  */
 static inline bool player_valid_field(gamma_t *g, player_t *p,
                                       int64_t x, int64_t y) {
-    return valid_x(g, x) && valid_y(g, y)
-           && g->board[y][x] != NULL && field_owner(g->board[y][x]) == p;
+    return valid_x(g, x) && valid_y(g, y) && field_owner(&g->board[y][x]) == p;
 }
 
 /** @brief Zlicza sąsiednie pola zajęte przez danego gracza.
@@ -344,23 +342,6 @@ static inline bool valid_player(gamma_t *g, int64_t player) {
     return 1 <= player && player <= g->players;
 }
 
-/** @brief Dodaje gracza, jeśli ten nie postawił jeszcze żadnego pionka.
- * Jeśli struktura przechowująca stan gracza o numerze @p player nie została
- * jeszcze stworzona, ponieważ gracz ten nie postawił jeszcze żadnego pionka,
- * alokuje pamięć na tę strukturę i zapisuje jej adres w pamięci w tablicy
- * @ref gamma::players_arr pod indeksem @p player.
- * Nic nie robi, jeśli taka struktura została już stworzona.
- * @param[in,out] g  – wskaźnik na strukturę przechowującą stan gry,
- * @param[in] player – numer gracza, liczba dodatnia niewiększa od wartości
- *                     @p players z funkcji @ref gamma_new.
- */
-static inline void gamma_add_player(gamma_t *g, uint32_t player) {
-    if (g->players_arr[player] == NULL) {
-        g->players_arr[player] = player_new(player);
-        check_for_successful_alloc(g->players_arr[player]);
-    }
-}
-
 /** @brief Aktualizuje obwód gracza po wykonaniu przez niego ruchu.
  * Aktualizuje obwód gracza będącego właścicielem pola wskazywanego przez @p f,
  * po wykonaniu przez niego ruchu na pole wskazywane przez @p f.
@@ -413,7 +394,7 @@ static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
 static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
                                         int64_t x, int64_t y) {
     player_t *owner = field_owner(f);
-    if (player_valid_field(g, owner, x, y) && area_merge(f, g->board[y][x])) {
+    if (player_valid_field(g, owner, x, y) && area_merge(f, &g->board[y][x])) {
         player_set_areas(owner, player_areas(owner) - 1);
     }
 }
@@ -499,7 +480,7 @@ static bool neighbour_valid_unique_field(gamma_t *g, int64_t x, int64_t y,
         return false;
     }
     else {
-        field_t *f = g->board[y][x];
+        field_t *f = &g->board[y][x];
 
         return f != NULL && unique_neighbour(field_owner(f), neighbours, added);
     }
@@ -526,7 +507,7 @@ static unsigned add_neighbour_if_unique(gamma_t *g, int64_t x, int64_t y,
                                         player_t *neighbours[MAX_NEIGHBOURS],
                                         unsigned added) {
     if (neighbour_valid_unique_field(g, x, y, neighbours, added)) {
-        neighbours[added] = field_owner(g->board[y][x]);
+        neighbours[added] = field_owner(&g->board[y][x]);
         added++;
     }
 
@@ -632,14 +613,10 @@ static bool player_move_legal(gamma_t *g, player_t *p, uint32_t x, uint32_t y) {
  *                      @p height z funkcji @ref gamma_new.
  */
 static void gamma_move_update(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
-    gamma_add_player(g, player);
+    player_t *p = &g->players_arr[player];
+    field_t *f = &g->board[y][x];
 
-    g->board[y][x] = field_new(x, y, g->players_arr[player]);
-    check_for_successful_alloc(g->board[y][x]);
-
-    player_t *p = g->players_arr[player];
-    field_t *f = g->board[y][x];
-
+    field_set_owner(f, p);
     g->busy_fields++;
     player_set_busy_fields(p, player_busy_fields(p) + 1);
 
@@ -684,11 +661,11 @@ static bool area_search(gamma_t *g, player_t *owner,
     if (!player_valid_field(g, owner, x, y)) {
         return false;
     }
-    else if (field_status(g->board[y][x]) == desired) {
+    else if (field_status(&g->board[y][x]) == desired) {
         return false;
     }
     else {
-        field_set_status(g->board[y][x], desired);
+        field_set_status(&g->board[y][x], desired);
 
         area_search(g, owner, x - 1, y, desired);
         area_search(g, owner, x + 1, y, desired);
@@ -714,7 +691,7 @@ static bool area_search(gamma_t *g, player_t *owner,
  */
 static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
                                  uint32_t x, uint32_t y) {
-    field_set_status(g->board[y][x], COUNTED);
+    field_set_status(&g->board[y][x], COUNTED);
 
     uint32_t areas = player_areas(victim) - 1;
     areas += area_search(g, victim, x - 1, y, COUNTED);
@@ -744,7 +721,7 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
  * a @p false w przeciwnym przypadku.
  */
 static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
-    player_t *victim = field_owner(g->board[y][x]);
+    player_t *victim = field_owner(&g->board[y][x]);
     uint8_t mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
     if (player_areas(victim) + mx_new_areas <= g->areas) {
         return true;
@@ -784,7 +761,7 @@ static bool player_golden_move_legal(gamma_t *g, player_t *p,
     if (p == NULL) {
         return true;
     }
-    else if (field_owner(g->board[y][x]) == p) {
+    else if (field_owner(&g->board[y][x]) == p) {
         return false;
     }
     else if (player_areas(p) < g->areas) {
@@ -814,8 +791,9 @@ static bool player_golden_move_legal(gamma_t *g, player_t *p,
 static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
                                         int64_t x, int64_t y, field_t *parent) {
     if (player_valid_field(g, owner, x, y)
-        && field_status(g->board[y][x]) != MODIFIED) {
-        field_t *f = g->board[y][x];
+        && field_status(&g->board[y][x]) != MODIFIED) {
+
+        field_t *f = &g->board[y][x];
         field_set_rank(f, 0);
         field_set_parent(f, parent);
         field_set_status(f, MODIFIED);
@@ -853,9 +831,9 @@ static void area_update_parent_and_rank(gamma_t *g, player_t *owner,
 static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y, uint32_t areas) {
     if (player_valid_field(g, old_owner, x, y)) {
-        if (field_status(g->board[y][x]) != MODIFIED) {
+        if (field_status(&g->board[y][x]) != MODIFIED) {
             areas++;
-            field_t *root = g->board[y][x];
+            field_t *root = &g->board[y][x];
             field_set_status(root, MODIFIED);
             field_set_rank(root, 0);
             field_set_parent(root, NULL);
@@ -913,10 +891,8 @@ static void old_owner_modify_areas(gamma_t *g, player_t *old_owner,
  */
 static void gamma_golden_move_update(gamma_t *g, uint32_t player,
                                      uint32_t x, uint32_t y) {
-    gamma_add_player(g, player);
-
-    player_t *new_owner = g->players_arr[player];
-    field_t *f = g->board[y][x];
+    player_t *new_owner = &g->players_arr[player];
+    field_t *f = &g->board[y][x];
     player_t *old_owner = field_owner(f);
 
     field_set_owner(f, new_owner);
@@ -942,29 +918,21 @@ static void gamma_golden_move_update(gamma_t *g, uint32_t player,
 ///@{
 
 /** @brief Usuwa wiersze planszy.
- * Usuwa @p num_of_rows początkowych wierszy tablicy @ref  gamma::board wskaźników
- * do struktur przechowujących stany pól, reprezentującej planszę, na której
+ * Usuwa @p num_of_rows początkowych wierszy tablicy @ref  gamma::board
+ * struktur przechowujących stany pól, reprezentującej planszę, na której
  * toczy się rozgrywka.
- * Zwalnia pamięć po każdym polu, którego adres był zapisany w jednym z usuwanych
- * wierszy.
  * Zwalnia pamięć po każdym z @p num_of_rows początkowych wierszy.
- * @param[in,out] board       – tablica wskaźników do pól, o liczbie wierszy
+ * @param[in,out] board       – tablica pól, o liczbie wierszy
  *                              równej wartości @p height z funkcji
  *                              @ref gamma_new oraz liczbie kolumn równej
  *                              wartości @p width z funkcji @ref gamma_new,
  *                              reprezentująca planszę na której odbywa się
  *                              rozgrywka,
- * @param[in] width           – długość każdego z wierszy tablicy @ref gamma::board,
- *                              równa wartości @p width z funkcji @ref gamma_new,
  * @param[in] num_of_rows     – liczba wierszy tablicy @ref gamma::board,
  *                              które należy usunąć.
  */
-static void board_remove_rows(field_t ***board, uint32_t width,
-                              uint32_t num_of_rows) {
+static void board_remove_rows(field_t **board, uint32_t num_of_rows) {
     for (uint32_t i = 0; i < num_of_rows; i++) {
-        for (uint32_t j = 0; j < width; j++) {
-            field_delete(board[i][j]);
-        }
         free(board[i]);
     }
 }
@@ -982,8 +950,8 @@ static void board_remove_rows(field_t ***board, uint32_t width,
  * @return Wskaźnik na utworzoną tablicę lub NULL, jeśli nie udało się zaalokować
  * pamięci.
  */
-static field_t ***board_new(uint32_t width, uint32_t height) {
-    field_t ***board = malloc(height * sizeof(field_t ***));
+static field_t **board_new(uint32_t width, uint32_t height) {
+    field_t **board = malloc(height * sizeof(field_t *));
     if (board == NULL) {
         return NULL;
     }
@@ -991,10 +959,10 @@ static field_t ***board_new(uint32_t width, uint32_t height) {
         bool mem_error = false;
         uint32_t added_rows = 0;
         for (uint32_t i = 0; i < height && !mem_error; i++, added_rows++) {
-            board[i] = calloc(width, sizeof(field_t **));
+            board[i] = malloc(width * sizeof(field_t));
             if (board[i] == NULL) {
                 mem_error = true;
-                board_remove_rows(board, width, added_rows);
+                board_remove_rows(board, added_rows);
             }
         }
 
@@ -1019,11 +987,11 @@ static void board_fill_string_less_than_10_players(gamma_t *g, char *board) {
     uint64_t filled = 0;
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
         for (uint32_t x = 0; x < g->width; x++, filled++) {
-            if (g->board[y][x] == NULL) {
+            if (field_is_free(&g->board[y][x])) {
                 board[filled] = FREE_FIELD;
             }
             else {
-                board[filled] = player_number(field_owner(g->board[y][x])) + '0';
+                board[filled] = player_number(field_owner(&g->board[y][x])) + '0';
             }
         }
         board[filled] = '\n';
@@ -1054,7 +1022,7 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
  * Dodaje do buforu @p board zawierającego tekstowy opis aktualnego stanu planszy,
  * poczynając od indeksu @p filled, kolejne cyfry numeru gracza @p player, wpierw
  * dodając tyle znaków @p PADDING, aby liczba wszystkich dodanych znaków była równa
- * wartości @p PLAYER_MX_DIGITS.
+ * wartości @p PLAYER_MAX_DIGITS.
  * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy,
  * @param[in] filled          – indeks pierwszego wolnego miejsca w buforze,
  *                              wartość równa liczbie dotychczas dodanych
@@ -1066,24 +1034,24 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
  *                              planszy, równa liczbie cyfr potrzebnych do
  *                              zapisu największego numeru gracza biorącego
  *                              udział w rozgrywce, licza niewiększa od wartości
- *                              @p PLAYER_MX_DIGITS.
+ *                              @p PLAYER_MAX_DIGITS.
  * @return Wartość zmiennej @p filled, równa indeksowi pierwszego wolnego miejsca
  * w buforze @p board po dodaniu do niego numeru gracza.
  */
 uint64_t board_fill_string_add_player(char *board, uint64_t filled,
                                       uint32_t player, uint8_t col_width) {
-    char digits[PLAYER_MX_DIGITS];
-    uint8_t added = 0;
+    char digits[PLAYER_MAX_DIGITS];
+    unsigned added = 0;
     while (player > 0) {
         digits[added] = (player % 10) + '0';
         added++;
         player /= 10;
     }
 
-    for (int8_t i = col_width - 1; i >= added; i--, filled++) {
+    for (unsigned i = col_width - 1; i >= added; i--, filled++) {
         board[filled] = PADDING;
     }
-    for (int8_t i = added - 1; i >= 0; i--, filled++) {
+    for (int i = added - 1; i >= 0; i--, filled++) {
         board[filled] = digits[i];
     }
 
@@ -1104,22 +1072,22 @@ uint64_t board_fill_string_add_player(char *board, uint64_t filled,
  *                              planszy, równa liczbie cyfr potrzebnych do
  *                              zapisu największego numeru gracza biorącego
  *                              udział w rozgrywce, licza niewiększa od wartości
- *                              @p PLAYER_MX_DIGITS.
+ *                              @p PLAYER_MAX_DIGITS.
  */
 static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
-                                                  uint8_t col_width) {
+                                                  unsigned col_width) {
     uint64_t filled = 0;
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
         for (uint32_t x = 0; x < g->width; x++) {
-            if (g->board[y][x] == NULL) {
-                for (uint8_t i = 1; i < col_width; i++, filled++) {
+            if (field_is_free(&g->board[y][x])) {
+                for (unsigned i = 1; i < col_width; i++, filled++) {
                     board[filled] = PADDING;
                 }
                 board[filled] = FREE_FIELD;
                 filled++;
             }
             else {
-                uint32_t player = player_number(field_owner(g->board[y][x]));
+                uint32_t player = player_number(field_owner(&g->board[y][x]));
                 filled = board_fill_string_add_player(board, filled,
                                                       player, col_width);
             }
@@ -1148,12 +1116,12 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
  *                              planszy, równa liczbie cyfr potrzebnych do
  *                              zapisu największego numeru gracza biorącego
  *                              udział w rozgrywce, licza niewiększa od wartości
- *                              @p PLAYER_MX_DIGITS.
+ *                              @p PLAYER_MAX_DIGITS.
  * @return Wskaźnik na zaalokowany bufor zawierający napis opisujący stan
  * planszy lub NULL, jeśli nie udało się zaalokować pamięci.
  */
 static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len,
-                                             uint8_t col_width) {
+                                             unsigned col_width) {
     char *board = malloc(board_len * sizeof(char));
     if (board != NULL) {
         board_fill_string_at_least_10_players(g, board, col_width);
@@ -1202,11 +1170,21 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
         return false;
     }
     else {
-        g->players_arr = calloc((uint64_t) players + 1, sizeof(player_t *));
+        g->players_arr = malloc(((uint64_t) players + 1) * sizeof(player_t));
         if (g->players_arr == NULL) {
             return false;
         }
         else {
+            for (uint32_t y = 0; y < height; y++) {
+                for (uint32_t x = 0; x < width; x++) {
+                    field_init(&g->board[y][x], x, y);
+                }
+            }
+
+            for (uint64_t i = 1; i <= g->players; i++) {
+                player_init(&g->players_arr[i], i);
+            }
+
             return true;
         }
     }
@@ -1243,15 +1221,9 @@ gamma_t *gamma_new(uint32_t width, uint32_t height,
 void gamma_delete(gamma_t *g) {
     if (g != NULL) {
         if (g->board != NULL) {
-            board_remove_rows(g->board, g->width, g->height);
+            board_remove_rows(g->board, g->height);
             free(g->board);
-
-            if (g->players_arr != NULL) {
-                for (uint64_t i = 0; i <= g->players; i++) {
-                    player_delete(g->players_arr[i]);
-                }
-                free(g->players_arr);
-            }
+            free(g->players_arr);
         }
         free(g);
     }
@@ -1261,7 +1233,7 @@ bool gamma_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
     if (g == NULL || !valid_player(g, player)) {
         return false;
     }
-    else if (!player_move_legal(g, g->players_arr[player], x, y)) {
+    else if (!player_move_legal(g, &g->players_arr[player], x, y)) {
         return false;
     }
     else {
@@ -1275,11 +1247,8 @@ bool gamma_golden_possible(gamma_t *g, uint32_t player) {
     if (g == NULL || !valid_player(g, player)) {
         return false;
     }
-    else if (g->players_arr[player] == NULL) {
-        return g->busy_fields > 0;
-    }
     else {
-        player_t *p = g->players_arr[player];
+        player_t *p = &g->players_arr[player];
 
         return player_golden_possible(p) && player_busy_fields(p) < g->busy_fields;
     }
@@ -1292,7 +1261,7 @@ bool gamma_golden_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
     else if (!valid_busy_field(g, x, y)) {
         return false;
     }
-    else if (!player_golden_move_legal(g, g->players_arr[player], x, y)) {
+    else if (!player_golden_move_legal(g, &g->players_arr[player], x, y)) {
         return false;
     }
     else if (!victim_golden_move_legal(g, x, y)) {
@@ -1306,11 +1275,11 @@ bool gamma_golden_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
 }
 
 uint64_t gamma_busy_fields(gamma_t *g, uint32_t player) {
-    if (g == NULL || !valid_player(g, player) || g->players_arr[player] == NULL) {
+    if (g == NULL || !valid_player(g, player)) {
         return 0;
     }
     else {
-        return player_busy_fields(g->players_arr[player]);
+        return player_busy_fields(&g->players_arr[player]);
     }
 }
 
@@ -1319,9 +1288,9 @@ uint64_t gamma_free_fields(gamma_t *g, uint32_t player) {
         return 0;
     }
     else {
-        player_t *p = g->players_arr[player];
+        player_t *p = &g->players_arr[player];
         if (p == NULL || player_areas(p) < g->areas) {
-            return (uint64_t) g->width * g->height - g->busy_fields;
+            return (uint64_t) g->width * (uint64_t) g->height - g->busy_fields;
         }
         else {
             return player_perimeter(p);
@@ -1335,19 +1304,20 @@ char *gamma_board(gamma_t *g) {
     }
     else if (g->players < 10) {
         return gamma_board_less_than_10_players(g, ((uint64_t) g->width + 1) *
-                                                   g->height + 1);
+                                                   (uint64_t) g->height + 1);
     }
     else {
-        uint8_t col_width = 0;
+        unsigned col_width = 0;
         uint32_t mx_player = g->players;
-        // Oblicza liczbę cyfr potrzebnych do zapisu największego numeru gracza
-        // biorącego udział w rozgrywce, zapisuje ją w zmiennej col_width.
+        /* Oblicza liczbę cyfr potrzebnych do zapisu największego numeru gracza
+         * biorącego udział w rozgrywce, zapisuje ją w zmiennej col_width. */
         while (mx_player > 0) {
             col_width++;
             mx_player /= 10;
         }
 
-        uint64_t board_len = (col_width + 1) * g->width * g->height + 1;
+        uint64_t board_len = (col_width + 1) * (uint64_t) g->width *
+                             (uint64_t) g->height + 1;
 
         return gamma_board_at_least_10_players(g, board_len, col_width);
     }

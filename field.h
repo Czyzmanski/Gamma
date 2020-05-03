@@ -124,6 +124,15 @@ static inline void field_set_owner(field_t *f, player_t *owner) {
     f->owner = owner;
 }
 
+/** @brief Sprawdza czy pole jest wolne.
+ * Sprawdza, czy pole wskazywane przez @p f jest wolne, to znaczy czy wartość
+ * składowej @ref field::owner jest równa NULL.
+ * @param[in,out] f     – wskaźnik na strukturę przechowującą stan pola.
+ */
+static inline bool field_is_free(field_t *f) {
+    return f->owner == NULL;
+}
+
 /** @brief Podaje wskaźnik do rodzica pola.
  * Podaje wskaźnik @p parent na strukturę pola będącego rodzicem pola
  * wskazywanego przez @p f.
