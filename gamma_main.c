@@ -22,5 +22,7 @@ int main() {
         //TODO: launch interactive mode
     }
 
+    free(g);
+
     return 0;
 }

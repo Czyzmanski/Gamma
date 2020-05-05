@@ -9,6 +9,8 @@
 
 #include "input_output.h"
 
+#define COMMENT '#'
+
 #define BATCH 'B'
 #define INTERACTIVE 'I'
 
@@ -19,6 +21,7 @@
 #define GAMMA_GOLDEN_POSSIBLE 'q'
 #define GAMMA_BOARD 'p'
 
+#define MODE_COMMAND_TOKENS 5
 #define MOVE_COMMAND_TOKENS 4
 #define QUERY_COMMAND_TOKENS 2
 #define BOARD_COMMAND_TOKENS 1
@@ -82,47 +85,61 @@ static bool tokens_valid_arguments(char *tokens[], size_t tokens_len,
     }
 }
 
-static void batch_mode_command_execute(gamma_t *g, char command,
-                                       const unsigned long arguments[]) {
+static void command_execute(gamma_t **g, unsigned line_num, char command,
+                            const unsigned long arguments[], input_mode_t *mode) {
     switch (command) {
+        case BATCH:
+        case INTERACTIVE: {
+            uint32_t width = arguments[0], height = arguments[1];
+            uint32_t players = arguments[2], areas = arguments[3];
+            *g = gamma_new(width, height, players, areas);
+            if (*g == NULL) {
+                error_print(line_num);
+            }
+            else {
+                *mode = command == BATCH ? BATCH_MODE : INTERACTIVE_MODE;
+                printf("OK %d\n", line_num);
+            }
+            break;
+        }
         case GAMMA_MOVE: {
             uint32_t player = arguments[0], x = arguments[1], y = arguments[2];
-            printf("%d\n", gamma_move(g, player, x, y) ? 1 : 0);
+            printf("%d\n", gamma_move(*g, player, x, y) ? 1 : 0);
             break;
         }
         case GAMMA_GOLDEN_MOVE: {
             uint32_t player = arguments[0], x = arguments[1], y = arguments[2];
-            printf("%d\n", gamma_golden_move(g, player, x, y) ? 1 : 0);
+            printf("%d\n", gamma_golden_move(*g, player, x, y) ? 1 : 0);
             break;
         }
         case GAMMA_BUSY_FIELDS: {
             uint32_t player = arguments[0];
-            printf("%lu\n", gamma_busy_fields(g, player));
+            printf("%lu\n", gamma_busy_fields(*g, player));
             break;
         }
         case GAMMA_FREE_FIELDS: {
             uint32_t player = arguments[0];
-            printf("%lu\n", gamma_free_fields(g, player));
+            printf("%lu\n", gamma_free_fields(*g, player));
             break;
         }
         case GAMMA_GOLDEN_POSSIBLE: {
             uint32_t player = arguments[0];
-            printf("%d\n", gamma_golden_possible(g, player) ? 1 : 0);
+            printf("%d\n", gamma_golden_possible(*g, player) ? 1 : 0);
             break;
         }
         default: {
-            printf("%s", gamma_board(g));
+            printf("%s", gamma_board(*g));
         }
     }
 }
 
-static void batch_mode_command_handle_line(gamma_t *g, char *line,
-                                           unsigned line_num, size_t tokens_len) {
+static void command_handle_line(gamma_t **g, char *line, unsigned line_num,
+                                size_t tokens_len, input_mode_t *mode) {
     char *tokens[tokens_len];
     if (line_split_into_tokens(line, tokens, tokens_len)) {
         unsigned long converted[tokens_len - 1];
         if (tokens_valid_arguments(tokens + 1, tokens_len - 1, converted)) {
-            batch_mode_command_execute(g, tokens[0][0], converted);
+            command_execute(g, line_num, tokens[0][0], converted, mode);
         }
         else {
             error_print(line_num);
@@ -133,19 +150,20 @@ static void batch_mode_command_handle_line(gamma_t *g, char *line,
     }
 }
 
-static void batch_mode_handle_line(gamma_t *g, char *line, unsigned line_num) {
+static void batch_mode_handle_line(gamma_t *g, char *line,
+                                   unsigned line_num, input_mode_t *mode) {
     switch (line[0]) {
         case GAMMA_MOVE:
         case GAMMA_GOLDEN_MOVE:
-            batch_mode_command_handle_line(g, line, line_num, MOVE_COMMAND_TOKENS);
+            command_handle_line(&g, line, line_num, MOVE_COMMAND_TOKENS, mode);
             break;
         case GAMMA_BUSY_FIELDS:
         case GAMMA_FREE_FIELDS:
         case GAMMA_GOLDEN_POSSIBLE:
-            batch_mode_command_handle_line(g, line, line_num, QUERY_COMMAND_TOKENS);
+            command_handle_line(&g, line, line_num, QUERY_COMMAND_TOKENS, mode);
             break;
         case GAMMA_BOARD:
-            batch_mode_command_handle_line(g, line, line_num, BOARD_COMMAND_TOKENS);
+            command_handle_line(&g, line, line_num, BOARD_COMMAND_TOKENS, mode);
             break;
         default:
             error_print(line_num);
@@ -157,7 +175,7 @@ static void pending_mode_handle_line(gamma_t **g, char *line,
     switch (line[0]) {
         case BATCH:
         case INTERACTIVE:
-
+            command_handle_line(g, line, line_num, MODE_COMMAND_TOKENS, mode);
             break;
         default:
             error_print(line_num);
@@ -169,14 +187,19 @@ void read_lines(gamma_t **g, char *buffer, size_t buffer_size, input_mode_t *mod
     unsigned line_num = 0;
     while ((line_len = getline(&buffer, &buffer_size, stdin)) != -1) {
         line_num++;
-        if (buffer[0] != '\n' && buffer[0] != COMMENT_BEGINNING) {
-            if (*mode == BATCH_MODE) {
-                batch_mode_handle_line(*g, buffer, line_len);
+
+        if (buffer[0] != '\n' && buffer[0] != COMMENT) {
+            if (buffer[line_len - 1] != '\n') {
+                error_print(line_num);
+            }
+            else if (*mode == BATCH_MODE) {
+                batch_mode_handle_line(*g, buffer, line_num, mode);
             }
             else {
-                pending_mode_handle_line(g, buffer, line_len, mode);
+                pending_mode_handle_line(g, buffer, line_num, mode);
             }
         }
+
         if (*mode == INTERACTIVE_MODE) {
             break;
         }

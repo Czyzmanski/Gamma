@@ -6,8 +6,6 @@
 #include <string.h>
 #include "gamma.h"
 
-#define COMMENT_BEGINNING '#'
-
 typedef enum input_mode input_mode_t;
 
 enum input_mode {
