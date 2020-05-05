@@ -10,7 +10,6 @@
 
 #include "gamma.h"
 #include "field.h"
-#include "mem_alloc_check.h"
 
 /**
  * Maksymalna liczba pól, z jakimi pole może sąsiadować.
@@ -41,25 +40,32 @@
  * Struktura przechowująca stan gry.
  */
 struct gamma {
-    uint32_t width;         /**< Szerokość planszy, liczba dodatnia równa wartości
-                             *   @p width z funkcji @ref gamma_new. */
-    uint32_t height;        /**< Wysokość planszy, liczba dodatnia równa wartości
-                             *   @p height z funkcji @ref gamma_new. */
-    uint32_t players;       /**< Liczba graczy, liczba dodatnia równa wartości
-                             *   @p players z funkcji @ref gamma_new. */
-    uint32_t areas;         /**< Maksymalna liczba obszarów, jakie może posiadać
-                             *   gracz, liczba dodatnia równa wartości @p areas
-                             *   z funkcji @ref gamma_new. */
-    uint64_t busy_fields;   /**< Liczba wszystkich zajętych pól na planszy. */
-    field_t **board;       /**<  Wskaźnik do tablicy o @p height wierszach
-                             *   i @p width kolumnach reprezentującej planszę
-                             *   na której rozgrywana jest gra, przechowującej
-                             *   w wierszu @p y i kolumnie @p x strukturę
-                             *   przechowującą stan pola (@p x, @p y). */
-    player_t *players_arr; /**<  Tablica struktur przechowujących
-                             *   stan graczy biorących udział w rozgrywce,
-                             *   o długości równej wartości o 1 większej niż wartość
-                             *   @p players z funkcji @ref gamma_new. */
+    uint32_t width;             /**< Szerokość planszy, liczba dodatnia równa 
+                                 * wartości @p width z funkcji @ref gamma_new. */
+    uint32_t height;            /**< Wysokość planszy, liczba dodatnia równa wartości
+                                 * @p height z funkcji @ref gamma_new. */
+    uint32_t players;           /**< Liczba graczy, liczba dodatnia równa wartości
+                                 * @p players z funkcji @ref gamma_new. */
+    uint32_t areas;             /**< Maksymalna liczba obszarów, jakie może posiadać
+                                 * gracz, liczba dodatnia równa wartości @p areas
+                                 * z funkcji @ref gamma_new. */
+    uint64_t busy_fields;       /**< Liczba wszystkich zajętych pól na planszy. */
+    field_t **board;            /**< Wskaźnik do tablicy o @p height wierszach
+                                 * i @p width kolumnach reprezentującej planszę
+                                 * na której rozgrywana jest gra, przechowującej
+                                 * w wierszu @p y i kolumnie @p x strukturę
+                                 * przechowującą stan pola (@p x, @p y). */
+    player_t *players_arr;      /**< Tablica struktur przechowujących
+                                 * stan graczy biorących udział w rozgrywce,
+                                 * o długości równej wartości o 1 większej niż 
+                                 * wartość @p players z funkcji @ref gamma_new. */
+    unsigned board_field_width; /**< Szerokość pola w napisie opisującym aktualny
+                                 * stan planszy, otrzymywanym w wyniku wywołania 
+                                 * funkcji @ref gamma_board, liczba całkowita 
+                                 * dodatnia nie większa niż @p PLAYER_MAX_DIGITS. */
+    uint64_t board_row_len;     /**< Długość wiersza w napisie opisującym aktualny
+                                 * stan planszy, otrzymywanym w wyniku wywołania
+                                 * funkcji @ref gamma_board. */
 };
 
 /** @name Obszar
@@ -257,7 +263,7 @@ static inline bool player_valid_field(gamma_t *g, player_t *p,
  * przez gracza wskazywanego przez @p p.
  */
 static unsigned player_adjacent_fields(gamma_t *g, player_t *p,
-                                      uint32_t x, uint32_t y) {
+                                       uint32_t x, uint32_t y) {
     unsigned fields = 0;
     fields += player_valid_field(g, p, x - 1, y);
     fields += player_valid_field(g, p, x + 1, y);
@@ -310,7 +316,7 @@ static inline bool player_valid_free_single_field(gamma_t *g, player_t *owner,
  * wskazywanego przez @p owner.
  */
 static unsigned player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
-                                                  uint32_t x, uint32_t y) {
+                                                   uint32_t x, uint32_t y) {
     unsigned fields = 0;
     fields += player_valid_free_single_field(g, owner, x - 1, y);
     fields += player_valid_free_single_field(g, owner, x + 1, y);
@@ -1067,20 +1073,14 @@ uint64_t board_fill_string_add_player(char *board, uint64_t filled,
  * @p PADDING do @p col_width znaków.
  * Kolumny oddzielone są pojedynczym znakiem @p PADDING.
  * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
- * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy,
- * @param[in] col_width       – szerokość kolumny w tekstowym opisie stanu
- *                              planszy, równa liczbie cyfr potrzebnych do
- *                              zapisu największego numeru gracza biorącego
- *                              udział w rozgrywce, licza niewiększa od wartości
- *                              @p PLAYER_MAX_DIGITS.
+ * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy.
  */
-static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
-                                                  unsigned col_width) {
+static void board_fill_string_at_least_10_players(gamma_t *g, char *board) {
     uint64_t filled = 0;
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
         for (uint32_t x = 0; x < g->width; x++) {
             if (field_is_free(&g->board[y][x])) {
-                for (unsigned i = 1; i < col_width; i++, filled++) {
+                for (unsigned i = 1; i < g->board_field_width; i++, filled++) {
                     board[filled] = PADDING;
                 }
                 board[filled] = FREE_FIELD;
@@ -1089,7 +1089,7 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
             else {
                 uint32_t player = player_number(field_owner(&g->board[y][x]));
                 filled = board_fill_string_add_player(board, filled,
-                                                      player, col_width);
+                                                      player, g->board_field_width);
             }
 
             if (x < g->width - 1) {
@@ -1111,20 +1111,14 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board,
  * Kolumny oddzielone są pojedynczym znakiem spacji.
  * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] board_len       – długość, jaką ma mieć bufor zawierający
- *                              napis opisujący planszę,
- * @param[in] col_width       – szerokość kolumny w tekstowym opisie stanu
- *                              planszy, równa liczbie cyfr potrzebnych do
- *                              zapisu największego numeru gracza biorącego
- *                              udział w rozgrywce, licza niewiększa od wartości
- *                              @p PLAYER_MAX_DIGITS.
+ *                              napis opisujący planszę.
  * @return Wskaźnik na zaalokowany bufor zawierający napis opisujący stan
  * planszy lub NULL, jeśli nie udało się zaalokować pamięci.
  */
-static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len,
-                                             unsigned col_width) {
+static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len) {
     char *board = malloc(board_len * sizeof(char));
     if (board != NULL) {
-        board_fill_string_at_least_10_players(g, board, col_width);
+        board_fill_string_at_least_10_players(g, board);
     }
 
     return board;
@@ -1175,6 +1169,22 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
             return false;
         }
         else {
+            g->board_field_width = 0;
+            uint32_t mx_player = g->players;
+            while (mx_player > 0) {
+                g->board_field_width++;
+                mx_player /= 10;
+            }
+
+            if (g->board_field_width < 10) {
+                g->board_row_len = (uint64_t) g->width *
+                                   (uint64_t) g->board_field_width + 1;
+            }
+            else {
+                g->board_row_len = (uint64_t) g->width *
+                                   (uint64_t) (g->board_field_width + 1);
+            }
+
             for (uint32_t y = 0; y < height; y++) {
                 for (uint32_t x = 0; x < width; x++) {
                     field_init(&g->board[y][x], x, y);
@@ -1307,20 +1317,26 @@ char *gamma_board(gamma_t *g) {
                                                    (uint64_t) g->height + 1);
     }
     else {
-        unsigned col_width = 0;
-        uint32_t mx_player = g->players;
-        /* Oblicza liczbę cyfr potrzebnych do zapisu największego numeru gracza
-         * biorącego udział w rozgrywce, zapisuje ją w zmiennej col_width. */
-        while (mx_player > 0) {
-            col_width++;
-            mx_player /= 10;
-        }
+        uint64_t board_len = g->board_row_len * (uint64_t) g->height + 1;
 
-        uint64_t board_len = (col_width + 1) * (uint64_t) g->width *
-                             (uint64_t) g->height + 1;
-
-        return gamma_board_at_least_10_players(g, board_len, col_width);
+        return gamma_board_at_least_10_players(g, board_len);
     }
+}
+
+uint32_t gamma_board_rows(gamma_t *g) {
+    return g->height;
+}
+
+uint64_t gamma_board_row_len(gamma_t *g) {
+    return g->board_row_len;
+}
+
+unsigned gamma_board_field_width(gamma_t *g) {
+    return g->board_field_width;
+}
+
+uint32_t gamma_players(gamma_t *g) {
+    return g->players;
 }
 
 ///@}

@@ -111,4 +111,12 @@ bool gamma_golden_possible(gamma_t *g, uint32_t player);
  */
 char *gamma_board(gamma_t *g);
 
+uint32_t gamma_board_rows(gamma_t *g);
+
+uint64_t gamma_board_row_len(gamma_t *g);
+
+unsigned gamma_board_field_width(gamma_t *g);
+
+uint32_t gamma_players(gamma_t *g);
+
 #endif // GAMMA_H
