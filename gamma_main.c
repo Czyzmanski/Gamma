@@ -3,6 +3,7 @@
 #include "pend_batch_mode.h"
 #include "mem_alloc_check.h"
 #include "gamma.h"
+#include "inter_mode.h"
 
 #define INITIAL_BUFFER_SIZE 16
 
@@ -19,7 +20,7 @@ int main() {
     free(line_buffer);
 
     if (mode == INTERACTIVE_MODE) {
-        //TODO: launch interactive mode
+        inter_mode_launch(g);
     }
 
     free(g);
