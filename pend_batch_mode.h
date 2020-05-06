@@ -14,8 +14,6 @@ enum input_mode {
     INTERACTIVE_MODE
 };
 
-void interactive_mode_launch(gamma_t *g);
-
 void read_lines(gamma_t **g, char *buffer, size_t buffer_size, input_mode_t *mode);
 
 #endif // INPUT_OUTPUT_H

@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "input_output.h"
+#include "pend_batch_mode.h"
 #include "mem_alloc_check.h"
 #include "gamma.h"
 
