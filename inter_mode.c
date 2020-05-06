@@ -1,7 +1,3 @@
-//
-// Created by szymon on 06.05.2020.
-//
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -14,103 +10,100 @@
 
 #define ROW_CLEAR_FROM_CURSOR_TO_END "\x1b0dK"
 
-#define CURSOR_MOVE_TO "\x1b[%d;%df"
+#define CURSOR_MOVE_TO "\x1b[%d;%luf"
 
-typedef struct cursor cursor_t;
+typedef struct inter_mode inter_mode_t;
 
-struct cursor {
-    uint32_t row;
-    uint64_t col;
+struct inter_mode {
+    char **board;
+    uint32_t board_height;
+    uint64_t board_width;
+    unsigned board_field_width;
+    uint32_t cursor_row;
+    uint64_t cursor_col;
 };
 
+static void inter_mode_move_cursor_left(inter_mode_t *im) {
+    if (im->cursor_col > 0) {
+        const char *row = im->board[im->cursor_row];
+        uint64_t col = im->cursor_col - 1;
 
-
-static uint64_t cursor_move_left_next_column(const char *row, uint64_t curr_col) {
-    if (curr_col == 0) {
-        return curr_col;
-    }
-    else {
-        uint64_t i = curr_col - 1;
-
-        while (i > 0 && isspace(row[i])) {
-            i--;
+        /* Znajdź koniec pierwszego pola z lewej. */
+        while (col > 0 && isspace(row[col])) {
+            col--;
         }
 
-        if (i > 0) {
-            return i;
+        /* Znajdź początek pierwszego pola z lewej. */
+        while (col > 0 && isdigit(row[col]) && im->board_field_width > 1) {
+            col--;
         }
-        else {
-            return isspace(row[i]) ? curr_col : i;
+
+        if (col > 0) {
+            im->cursor_col = col + isspace(row[col]);
+        }
+        else if (im->board_field_width == 1) {
+            im->cursor_col = col;
         }
     }
 }
 
-static uint64_t cursor_move_right_next_column(const char *row, uint64_t curr_col) {
-    uint64_t i = curr_col + 1;
+static void inter_mode_move_cursor_right(inter_mode_t *im) {
+    if (im->cursor_col < im->board_width - 1) {
+        const char *row = im->board[im->cursor_row];
+        uint64_t col = im->cursor_col + 1;
 
-    while (row[i] != '\0' && isdigit(row[i])) {
-        i++;
-    }
-
-    if (row[i] == '\0') {
-        return curr_col;
-    }
-    else {
-        while (isspace(row[i])) {
-            i++;
+        /* Znajdź koniec obecnego pola. */
+        while (col < im->board_width
+               && isdigit(row[col])
+               && im->board_field_width > 1) {
+            col++;
         }
 
-        return i;
+        /* Znajdź początek pierwszego pola z prawej. */
+        while (col < im->board_width && isspace(row[col])) {
+            col++;
+        }
+
+        if (col < im->board_width) {
+            im->cursor_col = col;
+        }
     }
 }
 
-static uint64_t cursor_vertical_move_next_column(const char *row,
-                                                 uint64_t curr_col) {
-    if (isspace(row[curr_col])) {
+static void inter_mode_move_cursor_vertically_find_proper_column(inter_mode_t *im) {
+    const char *row = im->board[im->cursor_row];
+    uint64_t col = im->cursor_col;
+
+    if (isspace(row[col])) {
         do {
-            curr_col++;
-        } while (isspace(row[curr_col]));
+            col++;
+        } while (isspace(row[col]));
     }
-    else {
-        while (curr_col > 0 && isdigit(row[curr_col])) {
-            curr_col--;
-        }
-
-        if (isspace(row[curr_col])) {
-            curr_col++;
+    else if (im->board_field_width > 1) {
+        while (col > 0 && isdigit(row[col])) {
+            col--;
         }
     }
 
-    return curr_col;
+    im->cursor_col = col + isspace(row[col]);
 }
 
-static void cursor_move_up_next_coordinates(char **board, const cursor_t *cur,
-                                            uint32_t *next_row, uint64_t *next_col) {
-    if (cur->row == 0) {
-        *next_row = cur->row, *next_col = cur->col;
-    }
-    else {
-        *next_row = cur->row - 1;
-        *next_col = cursor_vertical_move_next_column(board[*next_row], cur->col);
+static void inter_mode_move_cursor_up(inter_mode_t *im) {
+    if (im->cursor_row > 0) {
+        im->cursor_row--;
+        inter_mode_move_cursor_vertically_find_proper_column(im);
     }
 }
 
-static void cursor_move_down_next_coordinates(char **board, uint32_t board_height,
-                                              const cursor_t *cur,
-                                              uint32_t *next_row,
-                                              uint64_t *next_col) {
-    if (cur->row == board_height - 1) {
-        *next_row = cur->row, *next_col = cur->col;
-    }
-    else {
-        *next_row = cur->row + 1;
-        *next_col = cursor_vertical_move_next_column(board[*next_row], cur->col);
+static void inter_mode_move_cursor_down(inter_mode_t *im) {
+    if (im->cursor_row < im->board_height - 1) {
+        im->cursor_row++;
+        inter_mode_move_cursor_vertically_find_proper_column(im);
     }
 }
 
-static inline void cursor_move_to(cursor_t *cur, int row, int col) {
-    cur->row = row, cur->col = col;
-    printf(CURSOR_MOVE_TO, row, col);
+static inline void inter_mode_update_cursor_on_screen(inter_mode_t *im) {
+    printf(CURSOR_MOVE_TO, im->cursor_row, im->cursor_col);
 }
 
 static char **interactive_mode_new_board(gamma_t *g, uint64_t *board_width,
