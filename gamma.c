@@ -133,8 +133,10 @@ static field_t *area_find_root(field_t *f) {
 static bool area_merge(field_t *f1, field_t *f2) {
     field_t *f1_root = area_find_root(f1);
     field_t *f2_root = area_find_root(f2);
+
     uint32_t f1_root_rank = field_rank(f1_root);
     uint32_t f2_root_rank = field_rank(f2_root);
+    
     if (f1_root == f2_root) {
         return false;
     }
@@ -144,6 +146,7 @@ static bool area_merge(field_t *f1, field_t *f2) {
         }
         else {
             field_set_parent(f2_root, f1_root);
+
             if (f1_root_rank == f2_root_rank) {
                 field_set_rank(f1_root, f1_root_rank + 1);
             }
@@ -265,6 +268,7 @@ static inline bool player_valid_field(gamma_t *g, player_t *p,
 static unsigned player_adjacent_fields(gamma_t *g, player_t *p,
                                        uint32_t x, uint32_t y) {
     unsigned fields = 0;
+
     fields += player_valid_field(g, p, x - 1, y);
     fields += player_valid_field(g, p, x + 1, y);
     fields += player_valid_field(g, p, x, y - 1);
@@ -318,6 +322,7 @@ static inline bool player_valid_free_single_field(gamma_t *g, player_t *owner,
 static unsigned player_adjacent_free_single_fields(gamma_t *g, player_t *owner,
                                                    uint32_t x, uint32_t y) {
     unsigned fields = 0;
+
     fields += player_valid_free_single_field(g, owner, x - 1, y);
     fields += player_valid_free_single_field(g, owner, x + 1, y);
     fields += player_valid_free_single_field(g, owner, x, y - 1);
@@ -400,6 +405,7 @@ static void player_update_perimeter(gamma_t *g, field_t *f, bool golden_move) {
 static void player_merge_adjacent_areas(gamma_t *g, field_t *f,
                                         int64_t x, int64_t y) {
     player_t *owner = field_owner(f);
+
     if (player_valid_field(g, owner, x, y) && area_merge(f, &g->board[y][x])) {
         player_set_areas(owner, player_areas(owner) - 1);
     }
@@ -451,6 +457,7 @@ static void player_modify_areas(gamma_t *g, field_t *f) {
 static bool unique_neighbour(player_t *p, player_t *neighbours[MAX_NEIGHBOURS],
                              unsigned added) {
     unsigned i = 0;
+
     while (i < added && p != neighbours[i]) {
         i++;
     }
@@ -543,6 +550,7 @@ static void add_unique_neighbours(gamma_t *g, uint32_t x, uint32_t y,
     }
 
     unsigned added = 0;
+
     added = add_neighbour_if_unique(g, x - 1, y, neighbours, added);
     added = add_neighbour_if_unique(g, x + 1, y, neighbours, added);
     added = add_neighbour_if_unique(g, x, y - 1, neighbours, added);
@@ -564,6 +572,7 @@ static void add_unique_neighbours(gamma_t *g, uint32_t x, uint32_t y,
 static void neighbours_update_perimeter(gamma_t *g, field_t *f) {
     player_t *owner = field_owner(f);
     player_t *neighbours[MAX_NEIGHBOURS];
+
     add_unique_neighbours(g, field_x(f), field_y(f), neighbours);
 
     for (unsigned i = 0; i < MAX_NEIGHBOURS; i++) {
@@ -700,6 +709,7 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
     field_set_status(&g->board[y][x], COUNTED);
 
     uint32_t areas = player_areas(victim) - 1;
+
     areas += area_search(g, victim, x - 1, y, COUNTED);
     areas += area_search(g, victim, x + 1, y, COUNTED);
     areas += area_search(g, victim, x, y - 1, COUNTED);
@@ -729,6 +739,7 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
 static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
     player_t *victim = field_owner(&g->board[y][x]);
     unsigned mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
+
     if (player_areas(victim) + mx_new_areas <= g->areas) {
         return true;
     }
@@ -839,6 +850,7 @@ static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
     if (player_valid_field(g, old_owner, x, y)) {
         if (field_status(&g->board[y][x]) != MODIFIED) {
             areas++;
+
             field_t *root = &g->board[y][x];
             field_set_status(root, MODIFIED);
             field_set_rank(root, 0);
@@ -871,6 +883,7 @@ static uint32_t area_set_component(gamma_t *g, player_t *old_owner,
 static void old_owner_modify_areas(gamma_t *g, player_t *old_owner,
                                    uint32_t x, uint32_t y) {
     uint32_t areas = player_areas(old_owner) - 1;
+
     areas = area_set_component(g, old_owner, x - 1, y, areas);
     areas = area_set_component(g, old_owner, x + 1, y, areas);
     areas = area_set_component(g, old_owner, x, y - 1, areas);
@@ -958,12 +971,14 @@ static void board_remove_rows(field_t **board, uint32_t num_of_rows) {
  */
 static field_t **board_new(uint32_t width, uint32_t height) {
     field_t **board = malloc(height * sizeof(field_t *));
+
     if (board == NULL) {
         return NULL;
     }
     else {
         bool mem_error = false;
         uint32_t added_rows = 0;
+
         for (uint32_t i = 0; i < height && !mem_error; i++, added_rows++) {
             board[i] = malloc(width * sizeof(field_t));
             if (board[i] == NULL) {
@@ -991,6 +1006,7 @@ static field_t **board_new(uint32_t width, uint32_t height) {
  */
 static void board_fill_string_less_than_10_players(gamma_t *g, char *board) {
     uint64_t filled = 0;
+
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
         for (uint32_t x = 0; x < g->width; x++, filled++) {
             if (field_is_free(&g->board[y][x])) {
@@ -1000,8 +1016,10 @@ static void board_fill_string_less_than_10_players(gamma_t *g, char *board) {
                 board[filled] = player_number(field_owner(&g->board[y][x])) + '0';
             }
         }
+
         board[filled] = '\n';
     }
+
     board[filled] = '\0';
 }
 
@@ -1017,6 +1035,7 @@ static void board_fill_string_less_than_10_players(gamma_t *g, char *board) {
  */
 static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
     char *board = malloc(board_len * sizeof(char));
+
     if (board != NULL) {
         board_fill_string_less_than_10_players(g, board);
     }
@@ -1048,6 +1067,7 @@ uint64_t board_fill_string_add_player(char *board, uint64_t filled,
                                       uint32_t player, unsigned col_width) {
     char digits[PLAYER_MAX_DIGITS];
     unsigned added = 0;
+
     while (player > 0) {
         digits[added] = (player % 10) + '0';
         added++;
@@ -1077,6 +1097,7 @@ uint64_t board_fill_string_add_player(char *board, uint64_t filled,
  */
 static void board_fill_string_at_least_10_players(gamma_t *g, char *board) {
     uint64_t filled = 0;
+
     for (int64_t y = g->height - 1; y >= 0; y--, filled++) {
         for (uint32_t x = 0; x < g->width; x++) {
             if (field_is_free(&g->board[y][x])) {
@@ -1097,8 +1118,10 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board) {
                 filled++;
             }
         }
+
         board[filled] = '\n';
     }
+
     board[filled] = '\0';
 }
 
@@ -1117,6 +1140,7 @@ static void board_fill_string_at_least_10_players(gamma_t *g, char *board) {
  */
 static char *gamma_board_at_least_10_players(gamma_t *g, uint64_t board_len) {
     char *board = malloc(board_len * sizeof(char));
+
     if (board != NULL) {
         board_fill_string_at_least_10_players(g, board);
     }
@@ -1160,17 +1184,20 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
     g->busy_fields = 0;
 
     g->board = board_new(width, height);
+
     if (g->board == NULL) {
         return false;
     }
     else {
         g->players_arr = malloc(((uint64_t) players + 1) * sizeof(player_t));
+
         if (g->players_arr == NULL) {
             return false;
         }
         else {
             g->board_field_width = 0;
             uint32_t mx_player = g->players;
+
             while (mx_player > 0) {
                 g->board_field_width++;
                 mx_player /= 10;
@@ -1214,6 +1241,7 @@ gamma_t *gamma_new(uint32_t width, uint32_t height,
     }
     else {
         gamma_t *g = malloc(sizeof(gamma_t));
+
         if (g == NULL) {
             return NULL;
         }
@@ -1235,6 +1263,7 @@ void gamma_delete(gamma_t *g) {
             free(g->board);
             free(g->players_arr);
         }
+
         free(g);
     }
 }
@@ -1299,6 +1328,7 @@ uint64_t gamma_free_fields(gamma_t *g, uint32_t player) {
     }
     else {
         player_t *p = &g->players_arr[player];
+
         if (p == NULL || player_areas(p) < g->areas) {
             return (uint64_t) g->width * (uint64_t) g->height - g->busy_fields;
         }
