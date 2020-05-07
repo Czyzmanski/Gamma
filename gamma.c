@@ -1194,7 +1194,7 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
                 mx_player /= 10;
             }
 
-            if (g->board_field_width < 10) {
+            if (g->players < 10) {
                 g->board_row_len = (uint64_t) g->width *
                                    (uint64_t) g->board_field_width + 1;
             }
