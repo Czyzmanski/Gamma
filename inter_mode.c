@@ -1,16 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <ctype.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include "inter_mode.h"
 #include "gamma.h"
 #include "mem_alloc_check.h"
 
-#define FREE_FIELD '.'
+#define PLAYER_MAX_DIGITS 10
+
+#define IS_FREE_FIELD_CHAR(c) (c == '.')
 
 #define IS_ESC(c) (c == '\x1b')
 #define IS_LEFT_SQUARE_BRACKET(c) (c == '[')
@@ -24,9 +26,10 @@
 #define IS_QUIT_CHAR(c) (c == 'c' || c == 'C')
 #define IS_END_OF_GAME_CHAR(c) (c == 4)
 
-#define ROW_CLEAR_FROM_CURSOR_TO_END "\x1b0dK"
-
-#define CURSOR_MOVE_TO "\x1b[%d;%luf"
+#define MOVE_CURSOR_TO "\x1b[%d;%luf"
+#define TURN_OFF_REVERSE_VIDEO "\x1b[0m"
+#define TURN_ON_REVERSE_VIDEO "\x1b[7m"
+#define CLEAR_ROW_FROM_CURSOR_TO_END "\x1b[0K"
 
 typedef struct inter_mode inter_mode_t;
 
@@ -40,19 +43,19 @@ struct inter_mode {
     uint64_t cursor_col;
 };
 
-typedef void (*cursor_mover_t)(inter_mode_t *);
+typedef void (*cursor_move_fun)(inter_mode_t *imode);
+
+typedef bool (*gamma_move_fun)(gamma_t *g, uint32_t player, uint32_t x, uint32_t y);
 
 static void inter_mode_move_cursor_left(inter_mode_t *imode) {
     if (imode->cursor_col > 0) {
         const char *row = imode->board[imode->cursor_row];
         uint64_t col = imode->cursor_col - 1;
 
-        /* Znajdź koniec pierwszego pola z lewej. */
         while (col > 0 && isspace(row[col])) {
             col--;
         }
 
-        /* Znajdź początek pierwszego pola z lewej. */
         while (col > 0 && isdigit(row[col]) && imode->board_field_width > 1) {
             col--;
         }
@@ -89,8 +92,7 @@ static void inter_mode_move_cursor_right(inter_mode_t *imode) {
     }
 }
 
-static void
-inter_mode_move_cursor_vertically_find_proper_column(inter_mode_t *imode) {
+static void inter_mode_move_cursor_vertically_find_column(inter_mode_t *imode) {
     const char *row = imode->board[imode->cursor_row];
     uint64_t col = imode->cursor_col;
 
@@ -111,19 +113,19 @@ inter_mode_move_cursor_vertically_find_proper_column(inter_mode_t *imode) {
 static void inter_mode_move_cursor_up(inter_mode_t *imode) {
     if (imode->cursor_row > 0) {
         imode->cursor_row--;
-        inter_mode_move_cursor_vertically_find_proper_column(imode);
+        inter_mode_move_cursor_vertically_find_column(imode);
     }
 }
 
 static void inter_mode_move_cursor_down(inter_mode_t *imode) {
     if (imode->cursor_row < imode->board_height - 1) {
         imode->cursor_row++;
-        inter_mode_move_cursor_vertically_find_proper_column(imode);
+        inter_mode_move_cursor_vertically_find_column(imode);
     }
 }
 
 static inline void inter_mode_update_cursor_on_screen(inter_mode_t *imode) {
-    printf(CURSOR_MOVE_TO, imode->cursor_row, imode->cursor_col);
+    printf(MOVE_CURSOR_TO, imode->cursor_row, imode->cursor_col);
 }
 
 static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
@@ -131,11 +133,84 @@ static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
     inter_mode_update_cursor_on_screen(imode);
 }
 
-static void inter_mode_update_board_display(inter_mode_t *imode,
-                                            cursor_mover_t cur_mover) {
-    //TODO: reprint old row
-    cur_mover(imode);
-    //TODO: reprint new row
+static uint32_t inter_mode_current_field_number(inter_mode_t *imode) {
+    if (imode->board_field_width == 1) {
+        return imode->cursor_col;
+    }
+    else if (imode->cursor_col <= imode->board_field_width) {
+        return 0;
+    }
+    else {
+        return 1 + (imode->cursor_col - imode->board_field_width) /
+                   (imode->board_field_width + 1);
+    }
+}
+
+static uint64_t inter_mode_current_field_beginning(inter_mode_t *imode) {
+    uint32_t field_num = inter_mode_current_field_number(imode);
+
+    if (imode->board_field_width == 1
+        || imode->cursor_col <= imode->board_field_width) {
+
+        return field_num;
+    }
+    else {
+        return imode->board_field_width +
+               (field_num - 1) * (imode->board_field_width + 1);
+    }
+}
+
+static unsigned inter_mode_busy_characters_in_current_field(inter_mode_t *imode) {
+    if (imode->board_field_width == 1) {
+        return 1;
+    }
+    else {
+        uint64_t col = imode->cursor_col;
+        const char *row = imode->board[imode->cursor_row];
+
+        if (IS_FREE_FIELD_CHAR(row[col])) {
+            return 1;
+        }
+        else {
+            while (col < imode->board_width && isspace(row[col])) {
+                col++;
+            }
+
+            return col - imode->cursor_col;
+        }
+    }
+}
+
+static void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imode) {
+    uint32_t cursor_row = imode->cursor_row;
+    uint64_t cursor_col = imode->cursor_col;
+
+    printf(CLEAR_ROW_FROM_CURSOR_TO_END);
+    printf(TURN_OFF_REVERSE_VIDEO);
+    printf("%s\n", imode->board[cursor_row] + cursor_col);
+
+    imode->cursor_row = cursor_row, imode->cursor_col = cursor_col;
+}
+
+static void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
+    uint32_t cursor_row = imode->cursor_row;
+    uint64_t cursor_col = imode->cursor_col;
+    unsigned to_reverse = inter_mode_busy_characters_in_current_field(imode);
+
+    printf(CLEAR_ROW_FROM_CURSOR_TO_END);
+    printf(TURN_ON_REVERSE_VIDEO);
+    printf("%.*s", to_reverse, imode->board[cursor_row] + cursor_col);
+    printf(TURN_OFF_REVERSE_VIDEO);
+    printf("%s\n", imode->board[cursor_row] + cursor_col + to_reverse);
+
+    imode->cursor_row = cursor_row, imode->cursor_col = cursor_col;
+}
+
+static inline void inter_mode_update_board_display(inter_mode_t *imode,
+                                                   cursor_move_fun cur_mv_f) {
+    inter_mode_turn_reverse_off_and_reprint_row(imode);
+    cur_mv_f(imode);
+    inter_mode_turn_reverse_on_and_reprint_row(imode);
 }
 
 static void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player) {
@@ -158,12 +233,34 @@ static void inter_mode_print_summary(inter_mode_t *imode) {
     }
 }
 
-static bool inter_mode_gamma_move(inter_mode_t *imode, uint32_t player) {
-    //TODO
-}
+static bool inter_mode_gamma_move(inter_mode_t *imode, gamma_move_fun g_mv_f,
+                                  uint32_t player, uint32_t x, uint32_t y) {
+    if (g_mv_f(imode->g, player, x, y)) {
+        char *row = imode->board[imode->cursor_row];
+        uint64_t field_beg = inter_mode_current_field_beginning(imode);
 
-static bool inter_mode_gamma_golden_move(inter_mode_t *imode, uint32_t player) {
-    //TODO
+        if (imode->board_field_width == 1) {
+            row[field_beg] = (player % 10) + '0';
+        }
+        else {
+            char digits[PLAYER_MAX_DIGITS + 1];
+            sprintf(digits, "%*" PRIu32, imode->board_field_width, player);
+            strncpy(row + field_beg, digits, imode->board_field_width);
+        }
+
+        inter_mode_turn_reverse_off_and_reprint_row(imode);
+
+        while (isspace(row[imode->cursor_col])) {
+            imode->cursor_col++;
+        }
+
+        inter_mode_turn_reverse_on_and_reprint_row(imode);
+
+        return true;
+    }
+    else {
+        return false;
+    }
 }
 
 static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
@@ -210,11 +307,16 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
             *end_of_game_char = true;
         }
         else if (IS_MOVE_CHAR(c) || IS_GOLDEN_MOVE_CHAR(c)) {
+            uint32_t x = inter_mode_current_field_number(imode);
+            uint32_t y = imode->board_height - 1 - imode->cursor_row;
+
             if (IS_MOVE_CHAR(c)) {
-                player_valid_move = inter_mode_gamma_move(imode, player);
+                player_valid_move = inter_mode_gamma_move(imode, gamma_move,
+                                                          player, x, y);
             }
             else if (player_golden_possible) {
-                player_valid_move = inter_mode_gamma_golden_move(imode, player);
+                player_valid_move = inter_mode_gamma_move(imode, gamma_golden_move,
+                                                          player, x, y);
             }
 
             if (!player_valid_move) {
