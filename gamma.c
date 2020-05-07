@@ -5,8 +5,10 @@
  * @date 11.04.2020
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "gamma.h"
 #include "field.h"
@@ -136,7 +138,7 @@ static bool area_merge(field_t *f1, field_t *f2) {
 
     uint32_t f1_root_rank = field_rank(f1_root);
     uint32_t f2_root_rank = field_rank(f2_root);
-    
+
     if (f1_root == f2_root) {
         return false;
     }
@@ -1046,8 +1048,8 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
 /** @brief Dodaje do buforu numer gracza.
  * Dodaje do buforu @p board zawierającego tekstowy opis aktualnego stanu planszy,
  * poczynając od indeksu @p filled, kolejne cyfry numeru gracza @p player, wpierw
- * dodając tyle znaków @p PADDING, aby liczba wszystkich dodanych znaków była równa
- * wartości @p PLAYER_MAX_DIGITS.
+ * dodając tyle znaków spacji, aby liczba wszystkich dodanych znaków była równa
+ * wartości @p col_width.
  * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy,
  * @param[in] filled          – indeks pierwszego wolnego miejsca w buforze,
  *                              wartość równa liczbie dotychczas dodanych
@@ -1065,23 +1067,12 @@ static char *gamma_board_less_than_10_players(gamma_t *g, uint64_t board_len) {
  */
 uint64_t board_fill_string_add_player(char *board, uint64_t filled,
                                       uint32_t player, unsigned col_width) {
-    char digits[PLAYER_MAX_DIGITS];
-    unsigned added = 0;
+    char digits[PLAYER_MAX_DIGITS + 1];
 
-    while (player > 0) {
-        digits[added] = (player % 10) + '0';
-        added++;
-        player /= 10;
-    }
+    sprintf(digits, "%*" PRIu32, col_width, player);
+    strncpy(board + filled, digits, col_width);
 
-    for (unsigned i = col_width - 1; i >= added; i--, filled++) {
-        board[filled] = PADDING;
-    }
-    for (int i = added - 1; i >= 0; i--, filled++) {
-        board[filled] = digits[i];
-    }
-
-    return filled;
+    return filled + col_width;
 }
 
 /** @brief Wypełnia bufor opisujący stan planszy.
