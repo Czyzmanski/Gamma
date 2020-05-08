@@ -412,6 +412,7 @@ static void inter_mode_delete_board(inter_mode_t *imode, uint32_t rows_to_delete
     for (uint32_t i = 0; i < rows_to_delete; i++) {
         free(imode->board[i]);
     }
+
     free(imode->board);
 }
 
@@ -461,6 +462,9 @@ void inter_mode_launch(gamma_t *g) {
         exit(EXIT_FAILURE);
     }
 
+    if (system("setterm -cursor off") != 0) {
+        exit(EXIT_FAILURE);
+    }
 
     inter_mode_t imode;
     inter_mode_init(&imode, g);
@@ -468,18 +472,17 @@ void inter_mode_launch(gamma_t *g) {
     printf(CLEAR_SCREEN);
     printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
 
-    system("setterm -cursor off");
-
     inter_mode_print_board(&imode);
-
     inter_mode_move_cursor_to_starting_position(&imode);
     inter_mode_turn_reverse_on_and_reprint_row(&imode);
 
     inter_mode_play_gamma(&imode);
 
+    inter_mode_delete_board(&imode, imode.board_height);
+
     tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
 
-    system("setterm -cursor on");
-
-    inter_mode_delete_board(&imode, imode.board_height);
+    if (system("setterm -cursor on") != 0) {
+        exit(EXIT_FAILURE);
+    }
 }

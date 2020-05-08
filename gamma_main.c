@@ -8,14 +8,12 @@
 #define INITIAL_BUFFER_SIZE 16
 
 int main() {
-    gamma_t *g = NULL;
-
     char *line_buffer = malloc(INITIAL_BUFFER_SIZE * sizeof(char));
     check_for_successful_alloc(line_buffer);
 
+    gamma_t *g = NULL;
     input_mode_t mode = PENDING_MODE;
-    size_t line_buffer_size = INITIAL_BUFFER_SIZE;
-    read_lines(&g, line_buffer, line_buffer_size, &mode);
+    read_lines(&g, line_buffer, INITIAL_BUFFER_SIZE, &mode);
 
     free(line_buffer);
 
