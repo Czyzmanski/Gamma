@@ -92,7 +92,7 @@ static unsigned inter_mode_busy_characters_in_current_field(inter_mode_t *imode)
             return 1;
         }
         else {
-            while (col < imode->board_width && isspace(row[col])) {
+            while (col < imode->board_width - 1 && isdigit(row[col])) {
                 col++;
             }
 
@@ -142,8 +142,10 @@ static void inter_mode_move_cursor_left(inter_mode_t *imode) {
             col--;
         }
 
-        while (col > 0 && isdigit(row[col]) && imode->board_field_width > 1) {
-            col--;
+        if (imode->board_field_width > 1) {
+            while (col > 0 && isdigit(row[col])) {
+                col--;
+            }
         }
 
         if (col > 0) {
@@ -222,10 +224,15 @@ static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
     printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
 }
 
-static inline void inter_mode_move_cursor_to_starting_position(inter_mode_t *imode) {
+static void inter_mode_move_cursor_to_starting_position(inter_mode_t *imode) {
     imode->cursor_row = imode->board_height / 2;
     imode->cursor_col = imode->board_width / 2;
     imode->cursor_col = inter_mode_current_field_beginning(imode);
+
+    while (isspace(imode->board[imode->cursor_row][imode->cursor_col])) {
+        imode->cursor_col++;
+    }
+
     printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
 }
 
@@ -269,16 +276,20 @@ static bool inter_mode_gamma_move(inter_mode_t *imode, gamma_move_fun g_mv_f,
         }
         else {
             char digits[PLAYER_MAX_DIGITS + 1];
+
             sprintf(digits, "%*" PRIu32, imode->board_field_width, player);
             strncpy(row + field_beg, digits, imode->board_field_width);
         }
 
         inter_mode_turn_reverse_off_and_reprint_row(imode);
 
+        imode->cursor_col = field_beg;
+
         while (isspace(row[imode->cursor_col])) {
             imode->cursor_col++;
         }
 
+        printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
         inter_mode_turn_reverse_on_and_reprint_row(imode);
 
         return true;
