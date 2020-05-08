@@ -92,7 +92,7 @@ static unsigned inter_mode_busy_characters_in_current_field(inter_mode_t *imode)
             return 1;
         }
         else {
-            while (col < imode->board_width - 1 && isdigit(row[col])) {
+            while (isdigit(row[col])) {
                 col++;
             }
 
@@ -148,11 +148,10 @@ static void inter_mode_move_cursor_left(inter_mode_t *imode) {
             }
         }
 
-        if (col > 0) {
-            imode->cursor_col = col + isspace(row[col]);
-        }
-        else if (imode->board_field_width == 1) {
-            imode->cursor_col = col;
+        imode->cursor_col = col;
+
+        if (isspace(row[col])) {
+            imode->cursor_col++;
         }
 
         printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
@@ -170,7 +169,7 @@ static void inter_mode_move_cursor_right(inter_mode_t *imode) {
             }
         }
 
-        while (col < imode->board_width - 1 && isspace(row[col])) {
+        while (isspace(row[col])) {
             col++;
         }
 
@@ -197,7 +196,11 @@ static void inter_mode_move_cursor_vertically_find_column(inter_mode_t *imode) {
         }
     }
 
-    imode->cursor_col = col + isspace(row[col]);
+    imode->cursor_col = col;
+
+    if (isspace(row[col])) {
+        imode->cursor_col++;
+    }
 }
 
 static void inter_mode_move_cursor_up(inter_mode_t *imode) {

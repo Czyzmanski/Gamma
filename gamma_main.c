@@ -23,7 +23,7 @@ int main() {
         inter_mode_launch(g);
     }
 
-    free(g);
+    gamma_delete(g);
 
     return 0;
 }
