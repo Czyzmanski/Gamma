@@ -7,23 +7,12 @@
 #include <inttypes.h>
 
 #include "inter_mode.h"
+#include "inter_mode_input.h"
 #include "gamma.h"
 
 #define PLAYER_MAX_DIGITS 10
 
-#define IS_FREE_FIELD_CHAR(c) (c == '.')
-
-#define IS_ESC(c) (c == '\x1b')
-#define IS_LEFT_SQUARE_BRACKET(c) (c == '[')
-#define IS_CURSOR_UP_CHAR(c) (c == 'A')
-#define IS_CURSOR_DOWN_CHAR(c) (c == 'B')
-#define IS_CURSOR_RIGHT_CHAR(c) (c == 'C')
-#define IS_CURSOR_MOVEMENT_CHAR(c) ('A' <= c && c <= 'D')
-
-#define IS_MOVE_CHAR(c) (c == ' ')
-#define IS_GOLDEN_MOVE_CHAR(c) (c == 'g' || c == 'G')
-#define IS_QUIT_CHAR(c) (c == 'c' || c == 'C')
-#define IS_END_OF_GAME_CHAR(c) (c == 4)
+#define FREE_FIELD '.'
 
 #define SHOW_CURSOR "\x1b[?25h"
 #define HIDE_CURSOR "\x1b[?25l"
@@ -37,10 +26,15 @@
 #define CLEAR_ROW_FROM_CURSOR_TO_END "\x1b[0K"
 
 #define PROMPT "PLAYER %" PRIu32 " %" PRIu64 " %" PRIu64
+#define SUMMARY "PLAYER %" PRIu64 " %" PRIu64 "\n"
 
 typedef struct termios termios_t;
 
 typedef struct inter_mode inter_mode_t;
+
+typedef void (*cursor_move_fun)(inter_mode_t *imode);
+
+typedef bool (*gamma_move_fun)(gamma_t *g, uint32_t player, uint32_t x, uint32_t y);
 
 struct inter_mode {
     gamma_t *g;
@@ -52,11 +46,7 @@ struct inter_mode {
     uint64_t cursor_col;
 };
 
-typedef void (*cursor_move_fun)(inter_mode_t *imode);
-
-typedef bool (*gamma_move_fun)(gamma_t *g, uint32_t player, uint32_t x, uint32_t y);
-
-static uint32_t inter_mode_current_field_number(inter_mode_t *imode) {
+static inline uint32_t inter_mode_current_field_number(inter_mode_t *imode) {
     if (imode->board_field_width == 1) {
         return imode->cursor_col;
     }
@@ -69,7 +59,7 @@ static uint32_t inter_mode_current_field_number(inter_mode_t *imode) {
     }
 }
 
-static uint64_t inter_mode_current_field_beginning(inter_mode_t *imode) {
+static inline uint64_t inter_mode_current_field_beginning(inter_mode_t *imode) {
     uint32_t field_num = inter_mode_current_field_number(imode);
 
     if (imode->board_field_width == 1
@@ -91,7 +81,7 @@ static unsigned inter_mode_busy_characters_in_current_field(inter_mode_t *imode)
         uint64_t col = imode->cursor_col;
         const char *row = imode->board[imode->cursor_row];
 
-        if (IS_FREE_FIELD_CHAR(row[col])) {
+        if (row[col] == FREE_FIELD) {
             return 1;
         }
         else {
@@ -104,7 +94,7 @@ static unsigned inter_mode_busy_characters_in_current_field(inter_mode_t *imode)
     }
 }
 
-static void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imode) {
+static inline void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imode) {
     printf(CLEAR_ROW_FROM_CURSOR_TO_END);
     printf(TURN_OFF_REVERSE_VIDEO);
 
@@ -113,7 +103,7 @@ static void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imode) {
     printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
 }
 
-static void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
+static inline void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
     const char *row = imode->board[imode->cursor_row];
     unsigned to_reverse = inter_mode_busy_characters_in_current_field(imode);
 
@@ -206,7 +196,7 @@ static void inter_mode_move_cursor_vertically_find_column(inter_mode_t *imode) {
     }
 }
 
-static void inter_mode_move_cursor_up(inter_mode_t *imode) {
+static inline void inter_mode_move_cursor_up(inter_mode_t *imode) {
     if (imode->cursor_row > 0) {
         imode->cursor_row--;
         inter_mode_move_cursor_vertically_find_column(imode);
@@ -215,7 +205,7 @@ static void inter_mode_move_cursor_up(inter_mode_t *imode) {
     }
 }
 
-static void inter_mode_move_cursor_down(inter_mode_t *imode) {
+static inline void inter_mode_move_cursor_down(inter_mode_t *imode) {
     if (imode->cursor_row < imode->board_height - 1) {
         imode->cursor_row++;
         inter_mode_move_cursor_vertically_find_column(imode);
@@ -230,7 +220,7 @@ static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
     printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
 }
 
-static void inter_mode_move_cursor_to_starting_position(inter_mode_t *imode) {
+static inline void inter_mode_move_cursor_to_starting_position(inter_mode_t *imode) {
     imode->cursor_row = imode->board_height / 2;
     imode->cursor_col = imode->board_width / 2;
     imode->cursor_col = inter_mode_current_field_beginning(imode);
@@ -255,13 +245,13 @@ static void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player) {
     }
 }
 
-static void inter_mode_print_summary(inter_mode_t *imode) {
+static inline void inter_mode_print_summary(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
 
     printf(CLEAR_ROW_FROM_CURSOR_TO_END);
 
     for (uint64_t player = 1; player <= num_of_players; player++) {
-        printf("PLAYER %lu %lu\n", player, gamma_busy_fields(imode->g, player));
+        printf(SUMMARY, player, gamma_busy_fields(imode->g, player));
     }
 }
 
@@ -309,19 +299,19 @@ static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
     int c;
     do {
         c = getchar();
-    } while (IS_ESC(c));
+    } while (is_esc(c));
 
-    if (IS_LEFT_SQUARE_BRACKET(c)) {
+    if (is_left_square_bracket(c)) {
         c = getchar();
 
-        if (IS_CURSOR_MOVEMENT_CHAR(c)) {
-            if (IS_CURSOR_UP_CHAR(c)) {
+        if (is_cursor_movement(c)) {
+            if (is_cursor_up(c)) {
                 inter_mode_update_board_display(imode, inter_mode_move_cursor_up);
             }
-            else if (IS_CURSOR_DOWN_CHAR(c)) {
+            else if (is_cursor_down(c)) {
                 inter_mode_update_board_display(imode, inter_mode_move_cursor_down);
             }
-            else if (IS_CURSOR_RIGHT_CHAR(c)) {
+            else if (is_cursor_right(c)) {
                 inter_mode_update_board_display(imode, inter_mode_move_cursor_right);
             }
             else {
@@ -342,17 +332,17 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
     bool player_golden_possible = gamma_golden_possible(imode->g, player);
 
     while (!player_valid_move && !quit && !(*end_of_game_char)) {
-        if (IS_QUIT_CHAR(c)) {
+        if (is_quit(c)) {
             quit = true;
         }
-        else if (IS_END_OF_GAME_CHAR(c)) {
+        else if (is_end_of_game(c)) {
             *end_of_game_char = true;
         }
-        else if (IS_MOVE_CHAR(c) || IS_GOLDEN_MOVE_CHAR(c)) {
+        else if (is_move(c) || is_golden_move(c)) {
             uint32_t x = inter_mode_current_field_number(imode);
             uint32_t y = imode->board_height - 1 - imode->cursor_row;
 
-            if (IS_MOVE_CHAR(c)) {
+            if (is_move(c)) {
                 player_valid_move = inter_mode_gamma_move(imode, gamma_move,
                                                           player, x, y);
             }
@@ -365,7 +355,7 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
                 c = getchar();
             }
         }
-        else if (IS_ESC(c)) {
+        else if (is_esc(c)) {
             c = inter_mode_handle_input_when_esc(imode);
         }
         else {
@@ -411,14 +401,16 @@ void inter_mode_play_gamma(inter_mode_t *imode) {
     inter_mode_print_summary(imode);
 }
 
-static void inter_mode_delete_board(inter_mode_t *imode, uint32_t rows_to_delete) {
+static inline void inter_mode_delete_board(inter_mode_t *imode,
+                                           uint32_t rows_to_delete) {
     for (uint32_t i = 0; i < rows_to_delete; i++) {
         free(imode->board[i]);
     }
     free(imode->board);
 }
 
-static bool inter_mode_set_up_terminal(termios_t *old_term, termios_t *new_term) {
+static inline bool inter_mode_set_up_terminal(termios_t *old_term,
+                                              termios_t *new_term) {
     if (tcgetattr(STDIN_FILENO, old_term) != 0) {
         return false;
     }
