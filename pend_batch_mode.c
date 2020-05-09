@@ -3,12 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <ctype.h>
 #include <errno.h>
 
 #include "pend_batch_mode.h"
-#include "mem_alloc_check.h"
 
 #define COMMENT '#'
 
@@ -104,8 +103,9 @@ static void command_execute(gamma_t **g, unsigned line_num, char command,
             }
             else {
                 *mode = command == BATCH ? BATCH_MODE : INTERACTIVE_MODE;
-                printf("OK %d\n", line_num);
+                printf("OK %u\n", line_num);
             }
+
             break;
         }
         case GAMMA_MOVE: {
@@ -120,7 +120,7 @@ static void command_execute(gamma_t **g, unsigned line_num, char command,
         }
         case GAMMA_BUSY_FIELDS: {
             uint32_t player = arguments[0];
-            printf("%lu\n", gamma_busy_fields(*g, player));
+            printf("%" PRIu64 "\n", gamma_busy_fields(*g, player));
             break;
         }
         case GAMMA_FREE_FIELDS: {
@@ -133,8 +133,20 @@ static void command_execute(gamma_t **g, unsigned line_num, char command,
             printf("%d\n", gamma_golden_possible(*g, player) ? 1 : 0);
             break;
         }
+        case GAMMA_BOARD: {
+            char *board = gamma_board(*g);
+
+            if (board == NULL) {
+                error_print(line_num);
+            }
+            else {
+                printf("%s", board);
+            }
+
+            break;
+        }
         default: {
-            printf("%s", gamma_board(*g));
+            error_print(line_num);
         }
     }
 }
@@ -194,7 +206,9 @@ void read_lines(gamma_t **g, char *buffer, size_t buffer_size, input_mode_t *mod
     ssize_t line_len;
     unsigned line_num = 0;
 
-    while ((line_len = getline(&buffer, &buffer_size, stdin)) != -1) {
+    while (*mode != INTERACTIVE_MODE
+           && (line_len = getline(&buffer, &buffer_size, stdin)) != -1) {
+
         line_num++;
 
         if (buffer[0] != '\n' && buffer[0] != COMMENT) {
@@ -207,10 +221,6 @@ void read_lines(gamma_t **g, char *buffer, size_t buffer_size, input_mode_t *mod
             else {
                 pending_mode_handle_line(g, buffer, line_num, mode);
             }
-        }
-
-        if (*mode == INTERACTIVE_MODE) {
-            break;
         }
     }
 }

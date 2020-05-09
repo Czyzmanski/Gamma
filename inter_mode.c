@@ -8,7 +8,6 @@
 
 #include "inter_mode.h"
 #include "gamma.h"
-#include "mem_alloc_check.h"
 
 #define PLAYER_MAX_DIGITS 10
 
@@ -26,6 +25,8 @@
 #define IS_QUIT_CHAR(c) (c == 'c' || c == 'C')
 #define IS_END_OF_GAME_CHAR(c) (c == 4)
 
+#define SHOW_CURSOR "\x1b[?25h"
+#define HIDE_CURSOR "\x1b[?25l"
 #define MOVE_CURSOR_TO "\x1b[%" PRIu32 ";%" PRIu64 "H"
 #define MOVE_CURSOR_TO_TOP_LEFT_CORNER "\x1b[;H"
 
@@ -36,6 +37,8 @@
 #define CLEAR_ROW_FROM_CURSOR_TO_END "\x1b[0K"
 
 #define PROMPT "PLAYER %" PRIu32 " %" PRIu64 " %" PRIu64
+
+typedef struct termios termios_t;
 
 typedef struct inter_mode inter_mode_t;
 
@@ -134,7 +137,7 @@ static inline void inter_mode_update_board_display(inter_mode_t *imode,
 }
 
 static void inter_mode_move_cursor_left(inter_mode_t *imode) {
-    if (imode->cursor_col > 0) {
+    if (imode->cursor_col >= imode->board_field_width) {
         const char *row = imode->board[imode->cursor_row];
         uint64_t col = imode->cursor_col - 1;
 
@@ -412,11 +415,22 @@ static void inter_mode_delete_board(inter_mode_t *imode, uint32_t rows_to_delete
     for (uint32_t i = 0; i < rows_to_delete; i++) {
         free(imode->board[i]);
     }
-
     free(imode->board);
 }
 
-static void inter_mode_init(inter_mode_t *imode, gamma_t *g) {
+static bool inter_mode_set_up_terminal(termios_t *old_term, termios_t *new_term) {
+    if (tcgetattr(STDIN_FILENO, old_term) != 0) {
+        return false;
+    }
+    else {
+        *new_term = *old_term;
+        new_term->c_lflag &= ~(ICANON | ECHO);
+
+        return tcsetattr(STDIN_FILENO, TCSANOW, new_term) == 0;
+    }
+}
+
+static bool inter_mode_init(inter_mode_t *imode, gamma_t *g) {
     imode->g = g;
     imode->cursor_row = imode->cursor_col = 0;
     imode->board_height = gamma_board_rows(g);
@@ -424,65 +438,68 @@ static void inter_mode_init(inter_mode_t *imode, gamma_t *g) {
     imode->board_field_width = gamma_board_field_width(g);
 
     char *tmp_board = gamma_board(g);
-    check_for_successful_alloc(tmp_board);
 
-    imode->board = calloc(imode->board_height, sizeof(char *));
-    check_for_successful_alloc(imode->board);
+    if (tmp_board == NULL) {
+        return false;
+    }
+    else {
+        bool successful_init = true;
+        imode->board = calloc(imode->board_height, sizeof(char *));
 
-    for (uint32_t i = 0; i < imode->board_height; i++) {
-        imode->board[i] = malloc(imode->board_width * sizeof(char));
+        if (imode->board == NULL) {
+            successful_init = false;
+        }
+        else {
+            for (uint32_t i = 0; i < imode->board_height; i++) {
+                imode->board[i] = malloc(imode->board_width * sizeof(char));
 
-        if (imode->board[i] == NULL) {
-            inter_mode_delete_board(imode, i);
-            free(tmp_board);
-
-            exit(EXIT_FAILURE);
+                if (imode->board[i] == NULL) {
+                    successful_init = false;
+                    inter_mode_delete_board(imode, i);
+                    free(imode->board);
+                }
+                else {
+                    uint64_t offset = imode->board_width * i;
+                    strncpy(imode->board[i], tmp_board + offset, imode->board_width);
+                    imode->board[i][imode->board_width - 1] = '\0';
+                }
+            }
         }
 
-        strncpy(imode->board[i],
-                tmp_board + imode->board_width * i, imode->board_width);
+        free(tmp_board);
 
-        imode->board[i][imode->board_width - 1] = '\0';
+        return successful_init;
     }
-
-    free(tmp_board);
 }
 
-void inter_mode_launch(gamma_t *g) {
+bool inter_mode_launch(gamma_t *g) {
     struct termios old_term, new_term;
 
-    if (tcgetattr(STDIN_FILENO, &old_term) != 0) {
-        exit(EXIT_FAILURE);
+    if (!inter_mode_set_up_terminal(&old_term, &new_term)) {
+        return false;
     }
+    else {
+        inter_mode_t imode;
 
-    new_term = old_term;
-    new_term.c_lflag &= ~(ICANON | ECHO);
+        if (!inter_mode_init(&imode, g)) {
+            return false;
+        }
+        else {
+            printf(HIDE_CURSOR);
+            printf(CLEAR_SCREEN);
+            printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
 
-    if (tcsetattr(STDIN_FILENO, TCSANOW, &new_term) != 0) {
-        exit(EXIT_FAILURE);
-    }
+            inter_mode_print_board(&imode);
+            inter_mode_move_cursor_to_starting_position(&imode);
+            inter_mode_turn_reverse_on_and_reprint_row(&imode);
 
-    if (system("setterm -cursor off") != 0) {
-        exit(EXIT_FAILURE);
-    }
+            inter_mode_play_gamma(&imode);
 
-    inter_mode_t imode;
-    inter_mode_init(&imode, g);
+            inter_mode_delete_board(&imode, imode.board_height);
 
-    printf(CLEAR_SCREEN);
-    printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
+            printf(SHOW_CURSOR);
 
-    inter_mode_print_board(&imode);
-    inter_mode_move_cursor_to_starting_position(&imode);
-    inter_mode_turn_reverse_on_and_reprint_row(&imode);
-
-    inter_mode_play_gamma(&imode);
-
-    inter_mode_delete_board(&imode, imode.board_height);
-
-    tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
-
-    if (system("setterm -cursor on") != 0) {
-        exit(EXIT_FAILURE);
+            return tcsetattr(STDIN_FILENO, TCSANOW, &old_term) == 0;
+        }
     }
 }
