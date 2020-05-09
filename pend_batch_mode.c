@@ -202,14 +202,15 @@ static inline void pending_mode_handle_line(gamma_t **g, char *line,
     }
 }
 
-void read_lines(gamma_t **g, char *buffer, size_t buffer_size, input_mode_t *mode) {
+void read_lines(gamma_t **g, char **buf, size_t buffer_size, input_mode_t *mode) {
     ssize_t line_len;
     unsigned line_num = 0;
 
     while (*mode != INTERACTIVE_MODE
-           && (line_len = getline(&buffer, &buffer_size, stdin)) != -1) {
+           && (line_len = getline(buf, &buffer_size, stdin)) != -1) {
 
         line_num++;
+        char *buffer = *buf;
 
         if (buffer[0] != '\n' && buffer[0] != COMMENT) {
             if (buffer[line_len - 1] != '\n') {

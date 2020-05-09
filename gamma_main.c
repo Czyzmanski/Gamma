@@ -17,7 +17,7 @@ int main() {
         gamma_t *g = NULL;
         input_mode_t mode = PENDING_MODE;
 
-        read_lines(&g, line_buffer, INITIAL_BUFFER_SIZE, &mode);
+        read_lines(&g, &line_buffer, INITIAL_BUFFER_SIZE, &mode);
 
         free(line_buffer);
 
