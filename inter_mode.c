@@ -222,7 +222,7 @@ static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
 
 static inline void inter_mode_move_cursor_to_starting_position(inter_mode_t *imode) {
     imode->cursor_row = imode->board_height / 2;
-    imode->cursor_col = imode->board_width / 2;
+    imode->cursor_col = (imode->board_width - 1) / 2;
     imode->cursor_col = inter_mode_current_field_beginning(imode);
 
     while (isspace(imode->board[imode->cursor_row][imode->cursor_col])) {
@@ -364,7 +364,7 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
     }
 }
 
-void inter_mode_play_gamma(inter_mode_t *imode) {
+static void inter_mode_play_gamma(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
     bool any_player_possible_move = true, end_of_game_char = false;
 

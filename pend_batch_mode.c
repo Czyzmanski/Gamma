@@ -103,7 +103,10 @@ static void command_execute(gamma_t **g, unsigned line_num, char command,
             }
             else {
                 *mode = command == BATCH ? BATCH_MODE : INTERACTIVE_MODE;
-                printf("OK %u\n", line_num);
+
+                if (command == BATCH) {
+                    printf("OK %u\n", line_num);
+                }
             }
 
             break;
@@ -141,6 +144,7 @@ static void command_execute(gamma_t **g, unsigned line_num, char command,
             }
             else {
                 printf("%s", board);
+                free(board);
             }
 
             break;
