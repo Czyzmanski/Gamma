@@ -1,3 +1,5 @@
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -23,7 +25,7 @@
 #define TURN_OFF_REVERSE_VIDEO "\x1b[0m"
 
 #define CLEAR_SCREEN "\x1b[2J"
-#define CLEAR_ROW_FROM_CURSOR_TO_END "\x1b[0K"
+#define CLEAR_LINE_FROM_CURSOR_TO_END "\x1b[0K"
 
 #define PROMPT "PLAYER %" PRIu32 " %" PRIu64 " %" PRIu64
 #define SUMMARY "PLAYER %" PRIu64 " %" PRIu64 "\n"
@@ -95,7 +97,7 @@ static unsigned inter_mode_busy_characters_in_current_field(inter_mode_t *imode)
 }
 
 static inline void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imode) {
-    printf(CLEAR_ROW_FROM_CURSOR_TO_END);
+    printf(CLEAR_LINE_FROM_CURSOR_TO_END);
     printf(TURN_OFF_REVERSE_VIDEO);
 
     printf("%s", imode->board[imode->cursor_row] + imode->cursor_col);
@@ -107,7 +109,7 @@ static inline void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imod
     const char *row = imode->board[imode->cursor_row];
     unsigned to_reverse = inter_mode_busy_characters_in_current_field(imode);
 
-    printf(CLEAR_ROW_FROM_CURSOR_TO_END);
+    printf(CLEAR_LINE_FROM_CURSOR_TO_END);
     printf(TURN_ON_REVERSE_VIDEO);
 
     printf("%.*s", to_reverse, row + imode->cursor_col);
@@ -237,7 +239,7 @@ static void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player) {
     uint64_t player_free_fields = gamma_free_fields(imode->g, player);
     bool player_golden_possible = gamma_golden_possible(imode->g, player);
 
-    printf(CLEAR_ROW_FROM_CURSOR_TO_END);
+    printf(CLEAR_LINE_FROM_CURSOR_TO_END);
     printf(PROMPT, player, player_busy_fields, player_free_fields);
 
     if (player_golden_possible) {
@@ -248,7 +250,7 @@ static void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player) {
 static inline void inter_mode_print_summary(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
 
-    printf(CLEAR_ROW_FROM_CURSOR_TO_END);
+    printf(CLEAR_LINE_FROM_CURSOR_TO_END);
 
     for (uint64_t player = 1; player <= num_of_players; player++) {
         printf(SUMMARY, player, gamma_busy_fields(imode->g, player));
@@ -411,14 +413,14 @@ static inline void inter_mode_delete_board(inter_mode_t *imode,
 
 static inline bool inter_mode_set_up_terminal(termios_t *old_term,
                                               termios_t *new_term) {
-    if (tcgetattr(STDIN_FILENO, old_term) != 0) {
+    if (tcgetattr(fileno(stdin), old_term) != 0) {
         return false;
     }
     else {
         *new_term = *old_term;
         new_term->c_lflag &= ~(ICANON | ECHO);
 
-        return tcsetattr(STDIN_FILENO, TCSANOW, new_term) == 0;
+        return tcsetattr(fileno(stdin), TCSANOW, new_term) == 0;
     }
 }
 
@@ -466,8 +468,9 @@ static bool inter_mode_init(inter_mode_t *imode, gamma_t *g) {
 
 bool inter_mode_launch(gamma_t *g) {
     struct termios old_term, new_term;
+    bool is_terminal = isatty(fileno(stdin));
 
-    if (!inter_mode_set_up_terminal(&old_term, &new_term)) {
+    if (is_terminal && !inter_mode_set_up_terminal(&old_term, &new_term)) {
         return false;
     }
     else {
@@ -491,7 +494,12 @@ bool inter_mode_launch(gamma_t *g) {
 
             printf(SHOW_CURSOR);
 
-            return tcsetattr(STDIN_FILENO, TCSANOW, &old_term) == 0;
+            if (is_terminal) {
+                return tcsetattr(STDIN_FILENO, TCSANOW, &old_term) == 0;
+            }
+            else {
+                return true;
+            }
         }
     }
 }
