@@ -137,4 +137,4 @@ static inline void player_set_golden_possible(player_t *p, bool golden_possible)
     p->golden_possible = golden_possible;
 }
 
-#endif // GAMMA_PLAYER_H
+#endif // PLAYER_H
