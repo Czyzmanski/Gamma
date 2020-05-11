@@ -12,6 +12,13 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define PADDING ' '
+/**
+ * Znak reprezentujący wolne pole.
+ */
+#define FREE_FIELD '.'
+#define FIELD_MAX_WIDTH 11
+
 /**
  * Struktura przechowująca stan gry.
  */
@@ -111,11 +118,14 @@ bool gamma_golden_possible(gamma_t *g, uint32_t player);
  */
 char *gamma_board(gamma_t *g);
 
-uint32_t gamma_board_rows(gamma_t *g);
+uint32_t gamma_board_height(gamma_t *g);
 
-uint64_t gamma_board_row_len(gamma_t *g);
+uint64_t gamma_board_width(gamma_t *g);
 
 unsigned gamma_board_field_width(gamma_t *g);
+
+void gamma_board_field_repr(gamma_t *g, uint32_t x, uint32_t y,
+                            char repr[FIELD_MAX_WIDTH + 1]);
 
 uint32_t gamma_players(gamma_t *g);
 

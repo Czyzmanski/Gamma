@@ -8,6 +8,8 @@
 #ifndef FIELD_H
 #define FIELD_H
 
+#include <stdio.h>
+
 #include "player.h"
 
 /**
@@ -192,6 +194,21 @@ static inline status_t field_status(field_t *f) {
  */
 static inline void field_set_status(field_t *f, status_t status) {
     f->status = status;
+}
+
+static inline void field_repr(field_t *f,
+                              char repr[FIELD_MAX_WIDTH + 1], unsigned field_width) {
+    if (field_is_free(f)) {
+        repr[field_width] = '\0';
+        repr[field_width - 1] = FREE_FIELD;
+
+        for (int i = field_width - 2; i >= 0; i--) {
+            repr[i] = PADDING;
+        }
+    }
+    else {
+        sprintf(repr, "%*" PRIu32, field_width, player_number(field_owner(f)));
+    }
 }
 
 #endif // FIELD_H
