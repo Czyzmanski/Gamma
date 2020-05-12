@@ -1,11 +1,13 @@
 #define _GNU_SOURCE
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <inttypes.h>
 #include <termios.h>
 #include <unistd.h>
-#include <inttypes.h>
+#include <sys/ioctl.h>
 
 #include "gamma.h"
 #include "inter_mode.h"
@@ -355,6 +357,14 @@ static inline bool inter_mode_set_up_terminal(termios_t *old_term,
     }
 }
 
+static inline bool inter_mode_check_terminal_size(inter_mode_t *imode) {
+    struct winsize term_size;
+
+    return ioctl(fileno(stdin), TIOCGWINSZ, &term_size) == 0
+           && imode->board_width <= term_size.ws_col
+           && imode->board_height + 1 <= term_size.ws_row;
+}
+
 static inline void inter_mode_init(inter_mode_t *imode, gamma_t *g) {
     imode->g = g;
     imode->cursor_row = imode->cursor_col = 0;
@@ -374,34 +384,44 @@ bool inter_mode_launch(gamma_t *g) {
         inter_mode_t imode;
         inter_mode_init(&imode, g);
 
-        printf(HIDE_CURSOR);
-        printf(CLEAR_SCREEN);
-        printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
-
-        char *board = gamma_board(imode.g);
-
-        if (board == NULL) {
-            if (is_terminal) {
-                tcsetattr(fileno(stdin), TCSANOW, &old_term);
-            }
+        if (is_terminal && !inter_mode_check_terminal_size(&imode)) {
+            fprintf(stderr, "TERMINAL TOO SMALL FOR PRINTING BOARD\n");
+            tcsetattr(fileno(stdin), TCSANOW, &old_term);
 
             return false;
         }
         else {
-            printf("%s", board);
+            printf(HIDE_CURSOR);
+            printf(CLEAR_SCREEN);
+            printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
 
-            inter_mode_move_cursor_to_starting_position(&imode);
-            inter_mode_turn_reverse_on_and_reprint_row(&imode);
+            char *board = gamma_board(imode.g);
 
-            inter_mode_play_gamma(&imode);
+            if (board == NULL) {
+                if (is_terminal) {
+                    tcsetattr(fileno(stdin), TCSANOW, &old_term);
+                }
 
-            printf(SHOW_CURSOR);
-
-            if (is_terminal) {
-                return tcsetattr(fileno(stdin), TCSANOW, &old_term) == 0;
+                return false;
             }
             else {
-                return true;
+                printf("%s", board);
+
+                inter_mode_move_cursor_to_starting_position(&imode);
+                inter_mode_turn_reverse_on_and_reprint_row(&imode);
+
+                inter_mode_play_gamma(&imode);
+
+                printf(SHOW_CURSOR);
+
+                free(board);
+
+                if (is_terminal) {
+                    return tcsetattr(fileno(stdin), TCSANOW, &old_term) == 0;
+                }
+                else {
+                    return true;
+                }
             }
         }
     }
