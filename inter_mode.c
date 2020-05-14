@@ -538,11 +538,12 @@ bool inter_mode_launch(gamma_t *g) {
 
             inter_mode_play_gamma(&imode);
 
-            printf(SHOW_CURSOR);
             printf(DISABLE_ALTERNATIVE_SCREEN_BUFFER);
 
             inter_mode_print_board(&imode);
             inter_mode_print_summary(&imode);
+
+            printf(SHOW_CURSOR);
 
             if (is_terminal) {
                 return tcsetattr(fileno(stdin), TCSANOW, &old_term) == 0;

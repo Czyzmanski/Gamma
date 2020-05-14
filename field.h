@@ -9,6 +9,7 @@
 #define FIELD_H
 
 #include <stdio.h>
+#include <inttypes.h>
 
 #include "player.h"
 
