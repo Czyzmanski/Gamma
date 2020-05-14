@@ -116,12 +116,12 @@
  * Znak generowany przez wciśnięcie przez gracza klawisza oznaczającego wykonanie
  * złotego ruchu.
  */
-#define G_MOVE_KEY 'g'
+#define G_MOVE_KEY 'G'
 /**
  * Znak generowany przez wciśnięcie przez gracza klawisza oznaczającego rezygnację
  * z wykonania ruchu.
  */
-#define QUIT_MOVE_KEY 'q'
+#define QUIT_MOVE_KEY 'Q'
 /**
  * Znak generowany przez wciśnięcie przez gracza kombinacji klawiszy @p Ctrl-D,
  * oznaczających koniec gry.
