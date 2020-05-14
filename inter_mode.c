@@ -1,9 +1,7 @@
 #define _GNU_SOURCE
 
-#include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
-#include <string.h>
 #include <inttypes.h>
 #include <termios.h>
 #include <unistd.h>
@@ -19,16 +17,19 @@
 #define MOVE_CURSOR_TO_TOP_LEFT_CORNER "\x1b[;H"
 
 #define TURN_ON_REVERSE_VIDEO "\x1b[7m"
-#define TURN_OFF_REVERSE_VIDEO "\x1b[0m"
+#define TURN_ON_RED_FONT "\x1b[31m"
+#define RESET "\x1b[0m"
 
 #define CLEAR_SCREEN "\x1b[2J"
 #define CLEAR_LINE_FROM_CURSOR_TO_END "\x1b[0K"
 
-#define PROMPT "PLAYER %" PRIu32 " %" PRIu64 " %" PRIu64
-#define PROMPT_GOLDEN_POSSIBLE " G"
-#define SUMMARY "PLAYER %" PRIu64 " %" PRIu64 "\n"
+#define ENABLE_ALTERNATIVE_SCREEN_BUFFER "\x1b[?1049h"
+#define DISABLE_ALTERNATIVE_SCREEN_BUFFER "\x1b[?1049l"
 
-typedef struct termios termios_t;
+#define TERMINAL_TOO_SMALL "TERMINAL IS TOO SMALL FOR PLAYING\n"
+#define PROMPT "PLAYER %*" PRIu32 " %" PRIu64 " %" PRIu64
+#define PROMPT_GOLDEN_POSSIBLE " G"
+#define SUMMARY "PLAYER %*" PRIu64 " %" PRIu64 "\n"
 
 typedef struct inter_mode inter_mode_t;
 
@@ -38,42 +39,18 @@ typedef bool (*gamma_move_fun)(gamma_t *g, uint32_t player, uint32_t x, uint32_t
 
 struct inter_mode {
     gamma_t *g;
+    uint32_t cursor_row;
+    uint64_t cursor_col;
     uint32_t board_height;
     uint64_t board_width;
     unsigned board_field_width;
-    uint32_t cursor_row;
-    uint64_t cursor_col;
+    unsigned player_width;
 };
 
 static inline void inter_mode_gamma_coordinates(inter_mode_t *imode,
                                                 uint32_t *x, uint32_t *y) {
     *x = imode->cursor_col / imode->board_field_width;
     *y = imode->board_height - 1 - imode->cursor_row;
-}
-
-static unsigned inter_mode_chars_to_reverse_in_current_field(inter_mode_t *imode) {
-    if (imode->board_field_width == 1) {
-        return 1;
-    }
-    else {
-        uint32_t x, y;
-        inter_mode_gamma_coordinates(imode, &x, &y);
-
-        char field_repr[FIELD_MAX_WIDTH + 1];
-        gamma_board_field_repr(imode->g, x, y, field_repr);
-
-        unsigned i = 0, to_reverse = 0;
-
-        while (isspace(field_repr[i])) {
-            i++;
-        }
-
-        while (isdigit(field_repr[i]) || field_repr[i] == FREE_FIELD) {
-            i++, to_reverse++;
-        }
-
-        return to_reverse;
-    }
 }
 
 static inline void inter_mode_find_cursor_column(inter_mode_t *imode) {
@@ -119,7 +96,7 @@ static inline void inter_mode_update_cursor_on_display(inter_mode_t *imode) {
     printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
 }
 
-static inline void inter_mode_reprint_row(inter_mode_t *imode) {
+static inline void inter_mode_print_row(inter_mode_t *imode) {
     uint32_t x, y;
     inter_mode_gamma_coordinates(imode, &x, &y);
     uint32_t gamma_width = (imode->board_width - 1) / imode->board_field_width;
@@ -134,6 +111,19 @@ static inline void inter_mode_reprint_row(inter_mode_t *imode) {
     }
 }
 
+static inline void inter_mode_print_board(inter_mode_t *imode) {
+    printf(CLEAR_SCREEN);
+    printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
+    imode->cursor_row = imode->cursor_col = 0;
+
+    while (imode->cursor_row < imode->board_height) {
+        inter_mode_print_row(imode);
+        printf("\n");
+
+        imode->cursor_row++;
+    }
+}
+
 static inline void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imode) {
     uint32_t x, y;
     inter_mode_gamma_coordinates(imode, &x, &y);
@@ -142,11 +132,36 @@ static inline void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imo
     inter_mode_update_cursor_on_display(imode);
 
     printf(CLEAR_LINE_FROM_CURSOR_TO_END);
-    printf(TURN_OFF_REVERSE_VIDEO);
+    printf(RESET);
 
-    inter_mode_reprint_row(imode);
+    inter_mode_print_row(imode);
 
     inter_mode_update_cursor_on_display(imode);
+}
+
+static unsigned inter_mode_chars_to_reverse_in_current_field(inter_mode_t *imode) {
+    if (imode->board_field_width == 1) {
+        return 1;
+    }
+    else {
+        uint32_t x, y;
+        inter_mode_gamma_coordinates(imode, &x, &y);
+
+        char field_repr[FIELD_MAX_WIDTH + 1];
+        gamma_board_field_repr(imode->g, x, y, field_repr);
+
+        unsigned i = 0, to_reverse = 0;
+
+        while (isspace(field_repr[i])) {
+            i++;
+        }
+
+        while (isdigit(field_repr[i]) || field_repr[i] == FREE_FIELD) {
+            i++, to_reverse++;
+        }
+
+        return to_reverse;
+    }
 }
 
 static void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
@@ -167,11 +182,11 @@ static void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
     printf("%.*s", not_to_reverse, field_repr);
     printf(TURN_ON_REVERSE_VIDEO);
     printf("%.*s", to_reverse, field_repr + not_to_reverse);
-    printf(TURN_OFF_REVERSE_VIDEO);
+    printf(RESET);
 
     imode->cursor_col += imode->board_field_width;
 
-    inter_mode_reprint_row(imode);
+    inter_mode_print_row(imode);
 
     imode->cursor_col -= imode->board_field_width;
 
@@ -209,7 +224,8 @@ static inline void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player)
     bool player_golden_possible = gamma_golden_possible(imode->g, player);
 
     printf(CLEAR_LINE_FROM_CURSOR_TO_END);
-    printf(PROMPT, player, player_busy_fields, player_free_fields);
+    printf(PROMPT, imode->player_width, player,
+           player_busy_fields, player_free_fields);
 
     if (player_golden_possible) {
         printf(PROMPT_GOLDEN_POSSIBLE);
@@ -222,7 +238,8 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
     printf(CLEAR_LINE_FROM_CURSOR_TO_END);
 
     for (uint64_t player = 1; player <= num_of_players; player++) {
-        printf(SUMMARY, player, gamma_busy_fields(imode->g, player));
+        printf(SUMMARY, imode->player_width, player,
+               gamma_busy_fields(imode->g, player));
     }
 }
 
@@ -339,13 +356,10 @@ static void inter_mode_play_gamma(inter_mode_t *imode) {
             player++;
         }
     }
-
-    inter_mode_move_cursor_below_board(imode);
-    inter_mode_print_summary(imode);
 }
 
-static inline bool inter_mode_set_up_terminal(termios_t *old_term,
-                                              termios_t *new_term) {
+static inline bool inter_mode_set_up_terminal(struct termios *old_term,
+                                              struct termios *new_term) {
     if (tcgetattr(fileno(stdin), old_term) != 0) {
         return false;
     }
@@ -371,6 +385,8 @@ static inline void inter_mode_init(inter_mode_t *imode, gamma_t *g) {
     imode->board_height = gamma_board_height(g);
     imode->board_width = gamma_board_width(g);
     imode->board_field_width = gamma_board_field_width(g);
+    imode->player_width = imode->board_field_width == 1 ?
+                          imode->board_field_width : imode->board_field_width - 1;
 }
 
 bool inter_mode_launch(gamma_t *g) {
@@ -385,43 +401,35 @@ bool inter_mode_launch(gamma_t *g) {
         inter_mode_init(&imode, g);
 
         if (is_terminal && !inter_mode_check_terminal_size(&imode)) {
-            fprintf(stderr, "TERMINAL TOO SMALL FOR PRINTING BOARD\n");
+            fprintf(stderr, TURN_ON_RED_FONT);
+            fprintf(stderr, TERMINAL_TOO_SMALL);
+            fprintf(stderr, RESET);
+
             tcsetattr(fileno(stdin), TCSANOW, &old_term);
 
             return false;
         }
         else {
             printf(HIDE_CURSOR);
-            printf(CLEAR_SCREEN);
-            printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
+            printf(ENABLE_ALTERNATIVE_SCREEN_BUFFER);
 
-            char *board = gamma_board(imode.g);
+            inter_mode_print_board(&imode);
+            inter_mode_move_cursor_to_starting_position(&imode);
+            inter_mode_turn_reverse_on_and_reprint_row(&imode);
 
-            if (board == NULL) {
-                if (is_terminal) {
-                    tcsetattr(fileno(stdin), TCSANOW, &old_term);
-                }
+            inter_mode_play_gamma(&imode);
 
-                return false;
+            printf(SHOW_CURSOR);
+            printf(DISABLE_ALTERNATIVE_SCREEN_BUFFER);
+
+            inter_mode_print_board(&imode);
+            inter_mode_print_summary(&imode);
+
+            if (is_terminal) {
+                return tcsetattr(fileno(stdin), TCSANOW, &old_term) == 0;
             }
             else {
-                printf("%s", board);
-
-                inter_mode_move_cursor_to_starting_position(&imode);
-                inter_mode_turn_reverse_on_and_reprint_row(&imode);
-
-                inter_mode_play_gamma(&imode);
-
-                printf(SHOW_CURSOR);
-
-                free(board);
-
-                if (is_terminal) {
-                    return tcsetattr(fileno(stdin), TCSANOW, &old_term) == 0;
-                }
-                else {
-                    return true;
-                }
+                return true;
             }
         }
     }
