@@ -13,6 +13,18 @@
 #include "player.h"
 
 /**
+ * Znak reprezentujący wolne pole.
+ */
+#define FREE_FIELD '.'
+/**
+ * Maksymalna długość, jaką może mieć tekstowa reprezentacja pola na planszy,
+ * równa liczbie cyfr potrzebnych do zapisania największego numeru gracza mogącego
+ * brać udział w jakiejkolwiek rozgrywce, dodać jeden na odstęp między kolumnami
+ * kiedy jest więcej niż dziewięciu graczy.
+ */
+#define FIELD_MAX_WIDTH 11
+
+/**
  * Typ wyliczeniowy pozwalający na przechowywanie informacji o statusie pola.
  */
 typedef enum status status_t;
@@ -196,14 +208,27 @@ static inline void field_set_status(field_t *f, status_t status) {
     f->status = status;
 }
 
+/** @brief Daje napis reprezentujący pole.
+ * Wpisuje do bufora długości @p FIELD_MAX_WIDTH + 1 wskazywanego przez
+ * @p repr tekstową reprezentację pola.
+ * Długość tej reprezentacji określona jest przez @p field_width,
+ * wartość nie większą od @p FIELD_MAX_WIDTH.
+ * Znak null jest dopisywany na końcu wpisanej reprezentacji pola.
+ * @param[in] f           – wskaźnik na strukturę przechowującą stan pola,
+ * @param[in,out] repr    – wskaźnik na bufor długości @p FIELD_MAX_WIDTH + 1,
+ *                          do którego ma zostać wpisana tekstowa reprezentacja pola,
+ * @param[in] field_width – długość, jaką ma mieć tekstowa reprezentacja pola.
+ */
 static inline void field_repr(field_t *f,
                               char repr[FIELD_MAX_WIDTH + 1], unsigned field_width) {
     if (field_is_free(f)) {
         repr[field_width] = '\0';
         repr[field_width - 1] = FREE_FIELD;
 
+        char padding = ' ';
+
         for (int i = field_width - 2; i >= 0; i--) {
-            repr[i] = PADDING;
+            repr[i] = padding;
         }
     }
     else {

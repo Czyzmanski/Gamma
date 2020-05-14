@@ -9,43 +9,155 @@
 
 #include "gamma.h"
 #include "inter_mode.h"
-#include "inter_mode_input.h"
 
+/**
+ * Pokazuje kursor w terminalu.
+ */
 #define SHOW_CURSOR "\x1b[?25h"
+/**
+ * Ukrywa kursor w terminalu.
+ */
 #define HIDE_CURSOR "\x1b[?25l"
+/**
+ * Przesuwa kursor na podaną pozycję w terminalu.
+ */
 #define MOVE_CURSOR_TO "\x1b[%" PRIu32 ";%" PRIu64 "H"
+/**
+ * Przesuwa kursor w lewy górny róg terminala.
+ */
 #define MOVE_CURSOR_TO_TOP_LEFT_CORNER "\x1b[;H"
-
+/**
+ * Zamienia kolor tła z kolorem napisu.
+ */
 #define TURN_ON_REVERSE_VIDEO "\x1b[7m"
+/**
+ * Ustawia kolor napisu na czerowny.
+ */
 #define TURN_ON_RED_FONT "\x1b[31m"
+/**
+ * Przywraca domyślne ustawienia graficzne.
+ */
 #define RESET "\x1b[0m"
 
+/**
+ * Czyści cały ekran.
+ */
 #define CLEAR_SCREEN "\x1b[2J"
+/**
+ * Czyści wiersz, w którym obecnie znajduje się kursor, od pozycji kursora
+ * do końca wiersza.
+ */
 #define CLEAR_LINE_FROM_CURSOR_TO_END "\x1b[0K"
 
+/**
+ * Przełącza wyjście do alternatywnego bufora, przez co w terminalu jest widoczna
+ * tylko plansza oraz wiersz zachęcający gracza do wykonania ruchu.
+ */
 #define ENABLE_ALTERNATIVE_SCREEN_BUFFER "\x1b[?1049h"
+/**
+ * Przełącza wyjście do głównego bufora, przez co po zakończeniu działania
+ * programu w terminalu widoczna będzie ostateczna plansza wraz z podsumowaniem.
+ */
 #define DISABLE_ALTERNATIVE_SCREEN_BUFFER "\x1b[?1049l"
 
+/**
+ * Wiadomość wyswietlana w przypadku, gdy rozmiar okna terminala jest zbyt mały,
+ * aby poprawnie wyświetlić planszę.
+ */
 #define TERMINAL_TOO_SMALL "TERMINAL IS TOO SMALL FOR PLAYING\n"
+/**
+ * Wiadomość zachęcająca gracza do wykonania ruchu.
+ */
 #define PROMPT "PLAYER %*" PRIu32 " %" PRIu64 " %" PRIu64
+/**
+ * Wiadomość informująca gracza o możliwości wykonania złotego ruchu.
+ */
 #define PROMPT_GOLDEN_POSSIBLE " G"
+/**
+ * Wiadomość informująca o uzyskanym przez gracza wyniku.
+ */
 #define SUMMARY "PLAYER %*" PRIu64 " %" PRIu64 "\n"
 
+/**
+ * Kod generowany przez wciśnięcie klawisza @p Esc, zapisany heksadecymalnie.
+ */
+#define ESC '\x1b'
+/**
+ * Znak @p '[', występujący jako drugi w sekwencji trzech znaków generowanych
+ * przy wciśnięciu jednego z klawiszy ze strzałkami na klawiaturze.
+ */
+#define LEFT_SQUARE_BRACKET '['
+/**
+ * Ostatni znak występujący w sekwencji trzech znaków generowanych przez wciśnięcie
+ * klawisza ze strzałką w górę na klawiaturze.
+ */
+#define KEY_UP 'A'
+/**
+ * Ostatni znak występujący w sekwencji trzech znaków generowanych przez wciśnięcie
+ * klawisza ze strzałką w dół na klawiaturze.
+ */
+#define KEY_DOWN 'B'
+/**
+ * Ostatni znak występujący w sekwencji trzech znaków generowanych przez wciśnięcie
+ * klawisza ze strzałką w prawo na klawiaturze.
+ */
+#define KEY_RIGHT 'C'
+/**
+ * Ostatni znak występujący w sekwencji trzech znaków generowanych przez wciśnięcie
+ * klawisza ze strzałką w lewo na klawiaturze.
+ */
+#define KEY_LEFT 'D'
+/**
+ * Znak generowany przez wciśnięcie przez gracza klawisza oznaczającego wykonanie
+ * zwykłego ruchu.
+ */
+#define MOVE_KEY ' '
+/**
+ * Znak generowany przez wciśnięcie przez gracza klawisza oznaczającego wykonanie
+ * złotego ruchu.
+ */
+#define G_MOVE_KEY 'g'
+/**
+ * Znak generowany przez wciśnięcie przez gracza klawisza oznaczającego rezygnację
+ * z wykonania ruchu.
+ */
+#define QUIT_MOVE_KEY 'q'
+/**
+ * Znak generowany przez wciśnięcie przez gracza kombinacji klawiszy @p Ctrl-D,
+ * oznaczających koniec gry.
+ */
+#define END_OF_GAME_KEY 4
+
+/**
+ * Typ struktury przechowującej stan trybu interaktywnego.
+ */
 typedef struct inter_mode inter_mode_t;
 
+/**
+ * Struktura przechowująca stan trybu interaktywnego.
+ */
+struct inter_mode {
+    gamma_t *g;                 /**< Wskaźnik na strukturę przechowującą stan gry. */
+    uint32_t cursor_row;        /**< Numer wiersza, w którym znajduje się kursor,
+                                 *   liczony od góry, od 0. */
+    uint64_t cursor_col;        /**< Numer kolumny, w której znajduje się kursor,
+                                 *   liczonej od lewej, od 0. */
+    uint32_t board_height;      /**< Wysokość wyświetlanej planszy. */
+    uint64_t board_width;       /**< Szerokość wyświetlanej planszy. */
+    unsigned board_field_width; /**< Szerokość pola na wyświetlanej planszy. */
+    unsigned player_width;      /**< Szerokość z jaką mają być wypisywane numery
+                                 *   graczy. */
+};
+
+/**
+ * Typ funkcji aktualizującej położenie kursora.
+ */
 typedef void (*cursor_move_fun)(inter_mode_t *imode);
 
+/**
+ * Typ funkcji wykonującej ruch przez gracza.
+ */
 typedef bool (*gamma_move_fun)(gamma_t *g, uint32_t player, uint32_t x, uint32_t y);
-
-struct inter_mode {
-    gamma_t *g;
-    uint32_t cursor_row;
-    uint64_t cursor_col;
-    uint32_t board_height;
-    uint64_t board_width;
-    unsigned board_field_width;
-    unsigned player_width;
-};
 
 static inline void inter_mode_gamma_coordinates(inter_mode_t *imode,
                                                 uint32_t *x, uint32_t *y) {
@@ -243,6 +355,11 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
     }
 }
 
+/** @name Rozgrywka
+ * Zarządzanie rozgrywką oraz obsługa akcji wykonywanych przez graczy.
+ */
+///@{
+
 static inline bool inter_mode_gamma_move(inter_mode_t *imode, gamma_move_fun g_mv_f,
                                          uint32_t player, uint32_t x, uint32_t y) {
     if (g_mv_f(imode->g, player, x, y)) {
@@ -259,19 +376,19 @@ static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
     int c;
     do {
         c = getchar();
-    } while (is_esc(c));
+    } while (c == ESC);
 
-    if (is_left_square_bracket(c)) {
+    if (c == LEFT_SQUARE_BRACKET) {
         c = getchar();
 
-        if (is_cursor_movement(c)) {
-            if (is_cursor_up(c)) {
+        if (c == KEY_UP || c == KEY_DOWN || c == KEY_RIGHT || c == KEY_LEFT) {
+            if (c == KEY_UP) {
                 inter_mode_update_display(imode, inter_mode_move_cursor_up);
             }
-            else if (is_cursor_down(c)) {
+            else if (c == KEY_DOWN) {
                 inter_mode_update_display(imode, inter_mode_move_cursor_down);
             }
-            else if (is_cursor_right(c)) {
+            else if (c == KEY_RIGHT) {
                 inter_mode_update_display(imode, inter_mode_move_cursor_right);
             }
             else {
@@ -286,23 +403,23 @@ static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
 }
 
 static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
-                                    bool *end_of_game_char) {
+                                    bool *end_of_game_key_pressed) {
     int c = getchar();
-    bool quit = false, player_valid_move = false;
+    bool quit_key_pressed = false, player_valid_move = false;
     bool player_golden_possible = gamma_golden_possible(imode->g, player);
 
-    while (!player_valid_move && !quit && !(*end_of_game_char)) {
-        if (is_quit(c)) {
-            quit = true;
+    while (!player_valid_move && !quit_key_pressed && !(*end_of_game_key_pressed)) {
+        if (c == QUIT_MOVE_KEY || toupper(c) == QUIT_MOVE_KEY) {
+            quit_key_pressed = true;
         }
-        else if (is_end_of_game(c)) {
-            *end_of_game_char = true;
+        else if (c == END_OF_GAME_KEY) {
+            *end_of_game_key_pressed = true;
         }
-        else if (is_move(c) || is_golden_move(c)) {
+        else if (c == MOVE_KEY || c == G_MOVE_KEY || toupper(c) == G_MOVE_KEY) {
             uint32_t x, y;
             inter_mode_gamma_coordinates(imode, &x, &y);
 
-            if (is_move(c)) {
+            if (c == MOVE_KEY) {
                 player_valid_move = inter_mode_gamma_move(imode, gamma_move,
                                                           player, x, y);
             }
@@ -315,7 +432,7 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
                 c = getchar();
             }
         }
-        else if (is_esc(c)) {
+        else if (c == ESC) {
             c = inter_mode_handle_input_when_esc(imode);
         }
         else {
@@ -326,13 +443,13 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
 
 static void inter_mode_play_gamma(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
-    bool any_player_possible_move = true, end_of_game_char = false;
+    bool any_player_possible_move = true, end_of_game_key_pressed = false;
 
-    while (any_player_possible_move && !end_of_game_char) {
+    while (any_player_possible_move && !end_of_game_key_pressed) {
         any_player_possible_move = false;
         uint64_t player = 1;
 
-        while (player <= num_of_players && !end_of_game_char) {
+        while (player <= num_of_players && !end_of_game_key_pressed) {
             uint64_t player_free_fields = gamma_free_fields(imode->g, player);
             bool player_gamma_possible = gamma_golden_possible(imode->g, player);
 
@@ -350,13 +467,15 @@ static void inter_mode_play_gamma(inter_mode_t *imode) {
 
                 inter_mode_turn_reverse_on_and_reprint_row(imode);
 
-                inter_mode_handle_input(imode, player, &end_of_game_char);
+                inter_mode_handle_input(imode, player, &end_of_game_key_pressed);
             }
 
             player++;
         }
     }
 }
+
+///@}
 
 static inline bool inter_mode_set_up_terminal(struct termios *old_term,
                                               struct termios *new_term) {

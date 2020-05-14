@@ -7,23 +7,66 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include "pend_batch_mode.h"
+#include "parser.h"
 
+/**
+ * Znak oznaczający początek komentarza, jeśli występuje on jako pierwszy
+ * znak w linii.
+ */
 #define COMMENT '#'
 
+/**
+ * Znak oznaczający komendę powodującą utworzenie nowej gry za pomocą funkcji
+ * @ref gamma_new i przejście do trybu wsadowego.
+ */
 #define BATCH 'B'
+/**
+ * Znak oznaczający komendę powodującą utworzenie nowej gry za pomocą funkcji
+ * @ref gamma_new i przejście do trybu interaktywnego.
+ */
 #define INTERACTIVE 'I'
 
+/**
+ * Znak oznaczający komendę powodującą wywołanie funkcji @ref gamma_new.
+ */
 #define GAMMA_MOVE 'm'
+/**
+ * Znak oznaczający komendę powodującą wywołanie funkcji @ref gamma_golden_move.
+ */
 #define GAMMA_GOLDEN_MOVE 'g'
+/**
+ * Znak oznaczający komendę powodującą wywołanie funkcji @ref gamma_busy_fields.
+ */
 #define GAMMA_BUSY_FIELDS 'b'
+/**
+ * Znak oznaczający komendę powodującą wywołanie funkcji @ref gamma_free_fields.
+ */
 #define GAMMA_FREE_FIELDS 'f'
+/**
+ * Znak oznaczający komendę powodującą wywołanie funkcji @ref gamma_golden_possible.
+ */
 #define GAMMA_GOLDEN_POSSIBLE 'q'
+/**
+ * Znak oznaczający komendę powodującą wywołanie funkcji @ref gamma_board.
+ */
 #define GAMMA_BOARD 'p'
 
+/**
+ * Liczba leksemów w komendach @ref BATCH oraz @ref INTERACTIVE.
+ */
 #define MODE_COMMAND_TOKENS_LEN 5
+/**
+ * Liczba leksemów w komendach @ref GAMMA_MOVE oraz @ref GAMMA_GOLDEN_MOVE.
+ */
 #define MOVE_COMMAND_TOKENS_LEN 4
+/**
+ * Liczba leksemów w komendach @ref GAMMA_BUSY_FIELDS, @ref GAMMA_FREE_FIELDS
+ * oraz @ref GAMMA_GOLDEN_POSSIBLE.
+ */
 #define QUERY_COMMAND_TOKENS_LEN 2
+/**
+ * Liczba leksemów w komendzie @ref GAMMA_BOARD.
+ */
 #define BOARD_COMMAND_TOKENS_LEN 1
 
 static inline void print_error(unsigned line_num) {
@@ -206,15 +249,20 @@ static inline void pending_mode_handle_line(gamma_t **g, char *line,
     }
 }
 
-void read_lines(gamma_t **g, char **buf, size_t buffer_size, input_mode_t *mode) {
+bool read_lines(gamma_t **g, char **buf, size_t buffer_size, input_mode_t *mode) {
     ssize_t line_len;
     unsigned line_num = 0;
+    errno = 0;
 
     while (*mode != INTERACTIVE_MODE
            && (line_len = getline(buf, &buffer_size, stdin)) != -1) {
 
         line_num++;
         char *buffer = *buf;
+
+        if (errno == ENOMEM || errno == EINVAL) {
+            return false;
+        }
 
         if (buffer[0] != '\n' && buffer[0] != COMMENT) {
             if (buffer[line_len - 1] != '\n') {
@@ -227,5 +275,9 @@ void read_lines(gamma_t **g, char **buf, size_t buffer_size, input_mode_t *mode)
                 pending_mode_handle_line(g, buffer, line_num, mode);
             }
         }
+
+        errno = 0;
     }
+
+    return true;
 }

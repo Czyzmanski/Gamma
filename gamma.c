@@ -22,28 +22,28 @@
  */
 struct gamma {
     uint32_t width;             /**< Szerokość planszy, liczba dodatnia równa 
-                                 * wartości @p width z funkcji @ref gamma_new. */
+                                 *   wartości @p width z funkcji @ref gamma_new. */
     uint32_t height;            /**< Wysokość planszy, liczba dodatnia równa wartości
-                                 * @p height z funkcji @ref gamma_new. */
+                                 *   @p height z funkcji @ref gamma_new. */
     uint32_t players;           /**< Liczba graczy, liczba dodatnia równa wartości
-                                 * @p players z funkcji @ref gamma_new. */
+                                 *   @p players z funkcji @ref gamma_new. */
     uint32_t areas;             /**< Maksymalna liczba obszarów, jakie może posiadać
-                                 * gracz, liczba dodatnia równa wartości @p areas
-                                 * z funkcji @ref gamma_new. */
+                                 *   gracz, liczba dodatnia równa wartości @p areas
+                                 *   z funkcji @ref gamma_new. */
     uint64_t busy_fields;       /**< Liczba wszystkich zajętych pól na planszy. */
     field_t **board;            /**< Wskaźnik do tablicy o @p height wierszach
-                                 * i @p width kolumnach reprezentującej planszę
-                                 * na której rozgrywana jest gra, przechowującej
-                                 * w wierszu @p y i kolumnie @p x strukturę
-                                 * przechowującą stan pola (@p x, @p y). */
+                                 *   i @p width kolumnach reprezentującej planszę
+                                 *   na której rozgrywana jest gra, przechowującej
+                                 *   w wierszu @p y i kolumnie @p x strukturę
+                                 *   przechowującą stan pola (@p x, @p y). */
     player_t *players_arr;      /**< Tablica struktur przechowujących
-                                 * stan graczy biorących udział w rozgrywce,
-                                 * o długości równej wartości o 1 większej niż 
-                                 * wartość @p players z funkcji @ref gamma_new. */
+                                 *   stan graczy biorących udział w rozgrywce,
+                                 *   o długości równej wartości o 1 większej niż
+                                 *   wartość @p players z funkcji @ref gamma_new. */
     unsigned board_field_width; /**< Szerokość pola w napisie opisującym aktualny
-                                 * stan planszy, otrzymywanym w wyniku wywołania 
-                                 * funkcji @ref gamma_board, liczba całkowita 
-                                 * dodatnia nie większa niż @p PLAYER_MAX_DIGITS. */
+                                 *   stan planszy, otrzymywanym w wyniku wywołania
+                                 *   funkcji @ref gamma_board, liczba całkowita
+                                 *   dodatnia nie większa niż @p PLAYER_MAX_DIGITS. */
 };
 
 /** @name Obszar
@@ -977,15 +977,10 @@ static field_t **board_new(uint32_t width, uint32_t height) {
 }
 
 /** @brief Wypełnia bufor opisujący stan planszy.
- * Wypełnia bufor @p board opisujący stan planszy w przypadku, kiedy liczba
- * graczy jest niemniejsza niż 10.
- * Wszystkie pola mają szerokość równą @p col_width, równą liczbie cyfr
- * potrzebnych do zapisania największego numeru gracza biorącego udział
- * w rozgrywce, z wyrównaniem do prawej strony, z wypełnieniem z lewej znakami
- * @p PADDING do @p col_width znaków.
- * Kolumny oddzielone są pojedynczym znakiem @p PADDING.
+ * Wypełnia bufor wskazywany przez @p board opisujący stan planszy.
  * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
- * @param[in,out] board       – wskaźnik na bufor będący opisem stanu planszy.
+ * @param[in,out] board       – wskaźnik na bufor mający przechowywać tekstowy
+ *                              opis stanu planszy.
  */
 static void gamma_board_fill(gamma_t *g, char *board) {
     uint64_t filled = 0;
@@ -1009,8 +1004,6 @@ static void gamma_board_fill(gamma_t *g, char *board) {
 /** @brief Daje napis opisujący stan planszy.
  * Alokuje w pamięci bufor, w którym umieszcza napis zawierający tekstowy
  * opis aktualnego stanu planszy.
- * Wszystkie pola mają szerokość równą @p FIELD_WIDTH, z wyrównaniem do prawej
- * strony, z wypełnieniem z lewej spacjami.
  * @param[in] g               – wskaźnik na strukturę przechowującą stan gry,
  * @param[in] board_len       – długość, jaką ma mieć bufor zawierający
  *                              napis opisujący planszę.
@@ -1029,13 +1022,13 @@ static char *gamma_board_new(gamma_t *g, uint64_t board_len) {
 
 ///@}
 
-/** @name Inicjalizacja
- * Inicjalizacja struktury przechowującej stan gry.
+/** @name Inicjacja
+ * Inicjacja struktury przechowującej stan gry.
  */
 ///@{
 
-/** @brief Inicjalizauje strukturę przechowującą stan gry.
- * Inicjalizuje strukturę przechowującą stan gry, wskazywaną przez @p g,
+/** @brief Inicjuje strukturę przechowującą stan gry.
+ * Inicjuje strukturę przechowującą stan gry, wskazywaną przez @p g,
  * tak, aby reprezentowała początkowy stan gry.
  * @param[in,out] g   – wskaźnik na inicjalizowaną strukturę,
  * @param[in] width   – szerokość planszy, liczba dodatnia,

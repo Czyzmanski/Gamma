@@ -12,12 +12,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define PADDING ' '
-/**
- * Znak reprezentujący wolne pole.
- */
-#define FREE_FIELD '.'
-#define FIELD_MAX_WIDTH 11
+#include "field.h"
 
 /**
  * Struktura przechowująca stan gry.
@@ -118,15 +113,56 @@ bool gamma_golden_possible(gamma_t *g, uint32_t player);
  */
 char *gamma_board(gamma_t *g);
 
+/** @brief Podaje wysokość planszy w jej tekstowym opisie.
+ * Podaje wysokość planszy w napisie otrzymywanym w wyniku wywołania funkcji
+ * @ref gamma_board.
+ * @param[in] g       – wskaźnik na strukturę przechowującą stan gry.
+ * @return Wysokość planszy w napisie otrzymywanym w wyniku wywołania funkcji
+ * @ref gamma_board lub 0, gdy wskaźnik @p g jest równy NULL.
+ */
 uint32_t gamma_board_height(gamma_t *g);
 
+/** @brief Podaje szerokość planszy w jej tekstowym opisie.
+ * Podaje szerokość planszy w napisie otrzymywanym w wyniku wywołania funkcji
+ * @ref gamma_board.
+ * @param[in] g       – wskaźnik na strukturę przechowującą stan gry.
+ * @return Szerokość planszy w napisie otrzymywanym w wyniku wywołania funkcji
+ * @ref gamma_board lub 0, gdy wskaźnik @p g jest równy NULL.
+ */
 uint64_t gamma_board_width(gamma_t *g);
 
+/** @brief Podaje szerokość pola na planszy w jej tekstowym opisie.
+ * Podaje szerokość pola na planszy w napisie otrzymywanym w wyniku wywołania
+ * funkcji @ref gamma_board.
+ * @param[in] g       – wskaźnik na strukturę przechowującą stan gry.
+ * @return Szerokość pola na planszy w napisie otrzymywanym w wyniku wywołania
+ * funkcji @ref gamma_board lub 0, gdy wskaźnik @p g jest równy NULL.
+ */
 unsigned gamma_board_field_width(gamma_t *g);
 
+/** @brief Daje napis reprezentujący pole (@p x, @p y).
+ * Wpisuje do bufora długości @p FIELD_MAX_WIDTH + 1 wskazywanego przez
+ * @p repr tekstową reprezentację pola (@p x, @p y).
+ * Znak null jest dopisywany na końcu wpisanej reprezentacji tego pola.
+ * Nic nie robi, jeżeli wskaźnik @p g jest równy NULL lub któraś ze współrzędnych
+ * @p x, @p y jest niepoprawna.
+ * @param[in] g        – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x        – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                       @p width z funkcji @ref gamma_new,
+ * @param[in] y        – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                       @p height z funkcji @ref gamma_new.
+ * @param[in,out] repr – wskaźnik na bufor długości @p FIELD_MAX_WIDTH + 1,
+ *                       do którego ma zostać wpisana tekstowa reprezentacja pola.
+ */
 void gamma_board_field_repr(gamma_t *g, uint32_t x, uint32_t y,
                             char repr[FIELD_MAX_WIDTH + 1]);
 
+/** @brief Podaje liczbę graczy.
+ * Podaje liczbę graczy biorących udział w rozgrywce.
+ * @param[in] g       – wskaźnik na strukturę przechowującą stan gry.
+ * @return Liczba graczy biorących udział w rozgrywce lub 0,
+ * gdy wskaźnik @p g jest równy NULL.
+ */
 uint32_t gamma_players(gamma_t *g);
 
 #endif // GAMMA_H

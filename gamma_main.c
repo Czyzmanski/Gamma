@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "pend_batch_mode.h"
+#include "parser.h"
 #include "gamma.h"
 #include "inter_mode.h"
 
@@ -17,7 +17,9 @@ int main() {
         gamma_t *g = NULL;
         input_mode_t mode = PENDING_MODE;
 
-        read_lines(&g, &line_buffer, INITIAL_BUFFER_SIZE, &mode);
+        if (!read_lines(&g, &line_buffer, INITIAL_BUFFER_SIZE, &mode)) {
+            exit_code = EXIT_FAILURE;
+        }
 
         free(line_buffer);
 
