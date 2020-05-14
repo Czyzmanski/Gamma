@@ -121,7 +121,7 @@
  * Znak generowany przez wciśnięcie przez gracza klawisza oznaczającego rezygnację
  * z wykonania ruchu.
  */
-#define QUIT_MOVE_KEY 'Q'
+#define QUIT_MOVE_KEY 'C'
 /**
  * Znak generowany przez wciśnięcie przez gracza kombinacji klawiszy @p Ctrl-D,
  * oznaczających koniec gry.

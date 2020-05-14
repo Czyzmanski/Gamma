@@ -60,20 +60,20 @@
 #define GAMMA_BOARD 'p'
 
 /**
- * Liczba leksemów w komendach @ref BATCH oraz @ref INTERACTIVE.
+ * Liczba tokenów w komendach @ref BATCH oraz @ref INTERACTIVE.
  */
 #define MODE_COMMAND_TOKENS_NUM 5
 /**
- * Liczba leksemów w komendach @ref GAMMA_MOVE oraz @ref GAMMA_GOLDEN_MOVE.
+ * Liczba tokenów w komendach @ref GAMMA_MOVE oraz @ref GAMMA_GOLDEN_MOVE.
  */
 #define MOVE_COMMAND_TOKENS_NUM 4
 /**
- * Liczba leksemów w komendach @ref GAMMA_BUSY_FIELDS, @ref GAMMA_FREE_FIELDS
+ * Liczba tokenów w komendach @ref GAMMA_BUSY_FIELDS, @ref GAMMA_FREE_FIELDS
  * oraz @ref GAMMA_GOLDEN_POSSIBLE.
  */
 #define QUERY_COMMAND_TOKENS_NUM 2
 /**
- * Liczba leksemów w komendzie @ref GAMMA_BOARD.
+ * Liczba tokenów w komendzie @ref GAMMA_BOARD.
  */
 #define BOARD_COMMAND_TOKENS_NUM 1
 
