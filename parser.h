@@ -1,9 +1,18 @@
+/** @file
+ * Interfejs modułu odpowiedzialnego za wczytywanie i parsowanie linii
+ * oraz wykonywanie poleceń w trybie wsadowym
+ *
+ * @author Szymon Czyżmański 417797
+ * @date 14.05.2020
+ */
+
 #ifndef PARSER_H
 #define PARSER_H
 
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
+
 #include "gamma.h"
 
 /**
