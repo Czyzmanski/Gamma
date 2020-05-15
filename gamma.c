@@ -416,7 +416,7 @@ static void player_modify_areas(gamma_t *g, field_t *f) {
  * Tworzenie zbioru graczy @p neighbours posiadających co najmniej jedno pole
  * sąsiadujące z polem, na który stawiany jest pionek.
  * Aktualizacja obwodów graczy należących do utworzonego zbioru reprezentowanego
- * przez tablicę @p neighbours z funkcji @ref unique_neighbours i przekazywaną
+ * przez tablicę @p neighbours z funkcji @ref add_unique_neighbours i przekazywaną
  * do pozostałych funkcji z tej grupy.
  */
 ///@{
@@ -537,7 +537,7 @@ static void add_unique_neighbours(gamma_t *g, uint32_t x, uint32_t y,
 
 /** @brief Zmniejsza o 1 obwód każdego gracza posiadającego pionek na co namniej
  * jednym polu sąsiadującym z polem wskazywanym przez @p f.
- * Wywołuje funkcję @ref unique_neighbours tworzącą zbiór graczy posiadających
+ * Wywołuje funkcję @ref add_unique_neighbours tworzącą zbiór graczy posiadających
  * pionek na co najmniej jednym polu sąsiadującym z polem wskazywanym przez @p f,
  * które było dotąd wolne i na którym postawiono właśnie pionek, reprezentowanym
  * przez tablicę wskaźników @p neighbours.
@@ -1233,7 +1233,11 @@ void gamma_board_field_repr(gamma_t *g, uint32_t x, uint32_t y,
 }
 
 uint32_t gamma_players(gamma_t *g) {
-    return g->players;
+    return g == NULL ? 0 : g->players;
+}
+
+uint64_t gamma_fields(gamma_t *g) {
+    return g == NULL ? 0 : (uint64_t) g->height * (uint64_t) g->width;
 }
 
 ///@}

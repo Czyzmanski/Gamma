@@ -165,4 +165,12 @@ void gamma_board_field_repr(gamma_t *g, uint32_t x, uint32_t y,
  */
 uint32_t gamma_players(gamma_t *g);
 
+/** @brief Podaje liczbę wszystkich pól.
+ * Podaje liczbę wszystkich pól na planszy na której odbywa się rozgrywka.
+ * @param[in] g       – wskaźnik na strukturę przechowującą stan gry.
+ * @return Liczba wszystkich pól na planszy na której toczy się rozgrywka lub 0,
+ * gdy wskaźnik @p g jest równy NULL.
+ */
+uint64_t gamma_fields(gamma_t *g);
+
 #endif // GAMMA_H

@@ -86,7 +86,7 @@
 /**
  * Wiadomość informująca o uzyskanym przez gracza wyniku.
  */
-#define SUMMARY "PLAYER %*" PRIu64 " %" PRIu64 "\n"
+#define SUMMARY "PLAYER %*" PRIu64 " %*" PRIu64 "\n"
 
 /**
  * Kod generowany przez wciśnięcie klawisza @p Esc, zapisany heksadecymalnie.
@@ -474,12 +474,13 @@ static inline void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player)
  */
 static inline void inter_mode_print_summary(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
+    int busy_fields_width = snprintf(NULL, 0, "%" PRIu64, gamma_fields(imode->g));
 
     printf(CLEAR_LINE_FROM_CURSOR_TO_END);
 
     for (uint64_t player = 1; player <= num_of_players; player++) {
         printf(SUMMARY, imode->player_width, player,
-               gamma_busy_fields(imode->g, player));
+               busy_fields_width, gamma_busy_fields(imode->g, player));
     }
 }
 
