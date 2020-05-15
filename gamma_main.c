@@ -1,3 +1,10 @@
+/** @file
+ * Plik zawierający funkcję @ref main, rozpoczynającą i kończącą program
+ *
+ * @author Szymon Czyżmański 417797
+ * @date 15.05.2020
+ */
+
 #include <stdlib.h>
 
 #include "parser.h"
@@ -10,6 +17,13 @@
  */
 #define INITIAL_BUFFER_SIZE 16
 
+/** @brief Rozpoczyna i kończy działanie programu
+ * Alokuje pamięć na bufor przechowujący wczytywane linie, wczytuje dane ze
+ * standardowego strumienia wejścia i uruchamia tryb wsadowy lub interaktywny.
+ * Zwalnia pamięć po buforze i strukturze przechowującej stan gry.
+ * @return Wartość @p EXIT_SUCCESS, jeśli w trakcie działania programu nie wystąpił
+ * żaden krytyczny błąd, a @p EXIT_FAILURE w przeciwnym przypadku.
+ */
 int main() {
     int exit_code = EXIT_SUCCESS;
     char *line_buffer = malloc(INITIAL_BUFFER_SIZE * sizeof(char));
