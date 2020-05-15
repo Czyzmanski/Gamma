@@ -32,6 +32,7 @@ struct player {
 /** @brief Inicjuje strukturę przechowującą stan gracza.
  * Inicjuje strukturę wskazywaną przez @p p tak, aby reprezentowała początkowy
  * stan gracza.
+ * @param[in] p               – wskaźnik na strukturę przechowującą stan gracza,
  * @param[in] number          – numer gracza, liczba dodatnia niewiększa od
  *                              wartości @p players z funkcji @ref gamma_new.
  */

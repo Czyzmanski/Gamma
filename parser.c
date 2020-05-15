@@ -6,6 +6,9 @@
  * @date 14.05.2020
  */
 
+/**
+ * Dostęp do funkcji getline.
+ */
 #define _GNU_SOURCE
 
 #include <stdio.h>

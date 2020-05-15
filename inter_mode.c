@@ -5,6 +5,9 @@
  * @date 15.05.2020
  */
 
+/**
+ * Dostęp do funkcji fileno.
+ */
 #define _GNU_SOURCE
 
 #include <stdio.h>
