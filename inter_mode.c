@@ -1,3 +1,10 @@
+/** @file
+ * Implementacja modułu obsługującego tryb interaktywny
+ *
+ * @author Szymon Czyżmański 417797
+ * @date 15.05.2020
+ */
+
 #define _GNU_SOURCE
 
 #include <stdio.h>
@@ -423,7 +430,7 @@ static void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
 }
 
 /** @brief Aktualizuje sposób wyświetlania planszy.
- * Wywołuje funkcję wskazywaną przez cur_mv_f, zmieniającą położenie wirtualnego
+ * Wywołuje funkcję wskazywaną przez @p cur_mv_f, zmieniającą położenie wirtualnego
  * kursora. Aktualizuje sposób wyświetlania planszy wskutek zmiany położenia tego
  * kursora przez gracza.
  * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
@@ -474,7 +481,7 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
 }
 
 /** @brief Wykonuje ruch przez gracza.
- * Wywołuje funkcję wskazywaną przez g_mv_f, wykonującą ruch przez gracza.
+ * Wywołuje funkcję wskazywaną przez @p g_mv_f, wykonującą ruch przez gracza.
  * Aktualizuje sposób wyświetlania planszy wskutek zmiany jej tekstowej
  * reprezentacji.
  * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
@@ -485,6 +492,8 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
  *                        gracz @p player wykonuje ruch,
  * @param[in] y         – numer wiersza na którym znajduje się pole, na którym
  *                        gracz @p player wykonuje ruch.
+ * @return Wartość @p true, jeżeli wynik wywołania funkcji wskazywanej przez
+ * @p g_mv_f był równy @p true, a @p false w przeciwnym przypadku.
  */
 static inline bool inter_mode_gamma_move(inter_mode_t *imode, gamma_move_fun g_mv_f,
                                          uint32_t player, uint32_t x, uint32_t y) {
@@ -498,6 +507,16 @@ static inline bool inter_mode_gamma_move(inter_mode_t *imode, gamma_move_fun g_m
     }
 }
 
+/** @brief Obsługuje dane pojawiające się na standardowym wejściu po tym, jak
+ * wystąpił kod generowany przez klawisz @p Esc.
+ * Obsługuje dane pojawiające się na wejściu po tym, jak wystąpił kod
+ * generowany przez klawisz @p Esc. W razie rozpoznania kodów generowanych
+ * przez klawisze ze strzałkami, wywołuje odpowiednie funkcje poruszające
+ * wirtualnym kursorem i aktualizujące wygląd wyświetlanej planszy.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ * @return Ostatni wczytany znak.
+ */
 static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
     int c;
     do {
@@ -528,6 +547,16 @@ static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
     return c;
 }
 
+/** @brief Obsługuje dane pojawiające się na standardowym wejściu.
+ * Obsługuje dane pojawiające się na standardowym wejściu w wyniku wciskania
+ * przez graczy klawiszy na klawiaturze.
+ * @param[in,out] imode                   – wskaźnik na strukturę przechowującą
+ *                                          stan trybu interaktywnego,
+ * @param[in] player                      – numer gracza,
+ * @param[in,out] end_of_game_key_pressed – wskaźnik na zmienną przechowującą
+ *                                          informację o tym, czy wystąpił kod
+ *                                          @ref END_OF_GAME_KEY.
+ */
 static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
                                     bool *end_of_game_key_pressed) {
     int c = getchar();
@@ -567,6 +596,12 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
     }
 }
 
+/** @brief Obsługuje dane pojawiające się na standardowym wejściu.
+ * Obsługuje dane pojawiające się na standardowym wejściu w wyniku wciskania
+ * przez graczy klawiszy na klawiaturze.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static void inter_mode_play_gamma(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
     bool any_player_possible_move = true, end_of_game_key_pressed = false;
@@ -602,6 +637,17 @@ static void inter_mode_play_gamma(inter_mode_t *imode) {
     }
 }
 
+/** @brief Przygotowuje terminal do trybu interaktywnego.
+ * Jeżeli standardowy strumień wejścia jest połączony z terminalem, zmienia jego
+ * ustawienia tak, by tryb interaktywny mógł być poprawnie obsługiwany.
+ * @param[in] old_term     – wskaźnik na strukturę przechowującą stare ustawienia
+ *                           terminala,
+ * @param[in,out] new_term – wskaźnik na strukturę przechowującą nowe ustawienia
+ *                           terminala.
+ * @return Wartość @p true, jeżeli standardowy strumień wejścia jest połączony
+ * z terminalem i udało się poprawnie zapisać nowe ustawienia, a @p false
+ * w przeciwnym przypadku.
+ */
 static inline bool inter_mode_set_up_terminal(struct termios *old_term,
                                               struct termios *new_term) {
     if (tcgetattr(fileno(stdin), old_term) != 0) {
@@ -615,6 +661,13 @@ static inline bool inter_mode_set_up_terminal(struct termios *old_term,
     }
 }
 
+/** @brief Sprawdza, czy terminal jest wystarczająco duży.
+ * Sprawdza, czy terminal jest wystarczająco duży, by można było poprawnie
+ * wyświetlić planszę wraz z wierszem zachęcającym gracza do wykonania ruchu.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu interaktywnego.
+ * @return Wartość @p true, jeżeli poprawnie udało się odczytać rozmiary terminala
+ * i są one wystarczająco duże, a @p false w przeciwnym przypadku.
+ */
 static inline bool inter_mode_check_terminal_size(inter_mode_t *imode) {
     struct winsize term_size;
 
@@ -623,6 +676,13 @@ static inline bool inter_mode_check_terminal_size(inter_mode_t *imode) {
            && imode->board_height + 1 <= term_size.ws_row;
 }
 
+/** @brief Inicjuje strukturę przechowującą stan trybu interaktywnego.
+ * Inicjuje strukturę przechowującą stan trybu interaktywnego tak, by rerezentowała
+ * początkowy stan działania programu w tym trybie.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego,
+ * @param[in] g         – wskaźnik na strukturę przechowującą stan gry.
+ */
 static inline void inter_mode_init(inter_mode_t *imode, gamma_t *g) {
     imode->g = g;
     imode->cursor_row = imode->cursor_col = 0;

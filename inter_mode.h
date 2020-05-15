@@ -1,5 +1,5 @@
 /** @file
- * Interfejs modułu obsługującego tryb interkatywny
+ * Interfejs modułu obsługującego tryb interaktywny
  *
  * @author Szymon Czyżmański 417797
  * @date 14.05.2020
@@ -11,7 +11,6 @@
 #include "gamma.h"
 
 /** @brief Uruchamia tryb interaktywny.
- * Uruchamia tryb interaktywny programu.
  * @param[in,out] g – wskaźnik na strukturę przechowującą stan gry.
  * @return Wartość @p true, jeżeli poprawnie udało się uruchomić tryb interaktywny
  * i w trakcie jego działania nie nastąpił żaden krytyczny błąd, a @p false
