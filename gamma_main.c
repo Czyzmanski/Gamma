@@ -4,6 +4,10 @@
 #include "gamma.h"
 #include "inter_mode.h"
 
+/**
+ * Początkowa długość bufora, do którego wpisywana jest linia pobierana
+ * ze standardowego wejścia.
+ */
 #define INITIAL_BUFFER_SIZE 16
 
 int main() {
