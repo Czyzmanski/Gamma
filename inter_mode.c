@@ -474,7 +474,8 @@ static inline void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player)
  */
 static inline void inter_mode_print_summary(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
-    int busy_fields_width = snprintf(NULL, 0, "%" PRIu64, gamma_fields(imode->g));
+    int busy_fields_width = snprintf(NULL, 0, "%" PRIu64,
+                                     gamma_max_busy_fields(imode->g));
 
     printf(CLEAR_LINE_FROM_CURSOR_TO_END);
 

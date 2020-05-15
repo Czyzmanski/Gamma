@@ -1245,7 +1245,7 @@ uint64_t gamma_max_busy_fields(gamma_t *g) {
 
         for (uint64_t player = 1; player <= g->players; player++) {
             uint64_t busy_fields = gamma_busy_fields(g, player);
-            
+
             if (busy_fields > max_busy_fields) {
                 max_busy_fields = busy_fields;
             }
