@@ -1236,8 +1236,23 @@ uint32_t gamma_players(gamma_t *g) {
     return g == NULL ? 0 : g->players;
 }
 
-uint64_t gamma_fields(gamma_t *g) {
-    return g == NULL ? 0 : (uint64_t) g->height * (uint64_t) g->width;
+uint64_t gamma_max_busy_fields(gamma_t *g) {
+    if (g == NULL) {
+        return 0;
+    }
+    else {
+        uint64_t max_busy_fields = 0;
+
+        for (uint64_t player = 1; player <= g->players; player++) {
+            uint64_t busy_fields = gamma_busy_fields(g, player);
+            
+            if (busy_fields > max_busy_fields) {
+                max_busy_fields = busy_fields;
+            }
+        }
+
+        return max_busy_fields;
+    }
 }
 
 ///@}
