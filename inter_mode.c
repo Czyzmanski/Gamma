@@ -138,10 +138,14 @@ typedef struct inter_mode inter_mode_t;
  */
 struct inter_mode {
     gamma_t *g;                 /**< Wskaźnik na strukturę przechowującą stan gry. */
-    uint32_t cursor_row;        /**< Numer wiersza, w którym znajduje się kursor,
-                                 *   liczony od góry, od 0. */
-    uint64_t cursor_col;        /**< Numer kolumny, w której znajduje się kursor,
-                                 *   liczonej od lewej, od 0. */
+    uint32_t cursor_row;        /**< Numer wiersza, w którym znajduje się wirtualny
+                                 *   kursor, liczony od góry od 0. Wirtualny kursor
+                                 *   to byt śledzący ruchy graczy, odzwierciedlający
+                                 *   ich położenie na planszy. */
+    uint64_t cursor_col;        /**< Numer kolumny, w której znajduje się wirtualny
+                                 *   kursor, liczonej od lewej strony od 0.
+                                 *   Wirtualny kursor to byt śledzący ruchy graczy,
+                                 *   odzwierciedlający ich położenie na planszy. */
     uint32_t board_height;      /**< Wysokość wyświetlanej planszy. */
     uint64_t board_width;       /**< Szerokość wyświetlanej planszy. */
     unsigned board_field_width; /**< Szerokość pola na wyświetlanej planszy. */
@@ -159,12 +163,29 @@ typedef void (*cursor_move_fun)(inter_mode_t *imode);
  */
 typedef bool (*gamma_move_fun)(gamma_t *g, uint32_t player, uint32_t x, uint32_t y);
 
+/** @brief Daje współrzędne pola na planszy w grze.
+ * Zapisuje pod zmienną wskazywaną przez @p x numer kolumny na planszy w grze pola
+ * na którym znajduje się kursor oraz pod zmienną wskazywaną przez @p y numer
+ * wiersza na planszy w grze pola na którym znajduje się kursor.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu interaktywnego,
+ * @param[in,out] x – wskaźnik na zmienną pod którą ma zostać zapisany numer kolumny,
+ * @param[in,out] y – wskaźnik na zmienną pod którą ma zostać zapisany numer wiersza.
+ */
 static inline void inter_mode_gamma_coordinates(inter_mode_t *imode,
                                                 uint32_t *x, uint32_t *y) {
     *x = imode->cursor_col / imode->board_field_width;
     *y = imode->board_height - 1 - imode->cursor_row;
 }
 
+/** @brief Znajduje pierwszy niebiały znak w tekstowej reprezentacji pola,
+ * na którym aktualnie znajduje się wirtualny kursor.
+ * Znajduje pierwszy niebiały znak w tekstowej reprezentacji pola,
+ * na którym aktualnie znajduje się wirtualny kursor. Ustawia współrzędne tego
+ * kursora tak, by odpowiadały pozycji pierwszego niebiałego znaku w tekstowej
+ * reprezentacji pola na którym aktualnie się on znajduje, z uwzględnieniem pozycji
+ * tej reprezentacji w reprezentacji planszy, na której toczy się rozgrywka.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu interaktywnego.
+ */
 static inline void inter_mode_find_cursor_column(inter_mode_t *imode) {
     uint32_t x, y;
     inter_mode_gamma_coordinates(imode, &x, &y);
@@ -180,34 +201,104 @@ static inline void inter_mode_find_cursor_column(inter_mode_t *imode) {
     }
 }
 
+/** @brief Przesuwa wirtualny kursor o jedno pole w lewo.
+ * Przesuwa wirtualny kursor o jedno pole w lewo. Nic nie robi, jeżeli kursor
+ * jest już na polu w znajdującym się w kolumnie pierwszej od lewej.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static inline void inter_mode_move_cursor_left(inter_mode_t *imode) {
     if (imode->cursor_col >= imode->board_field_width) {
         imode->cursor_col -= imode->board_field_width;
     }
 }
 
+/** @brief Przesuwa wirtualny kursor o jedno pole w prawo.
+ * Przesuwa wirtualny kursor o jedno pole w prawo. Nic nie robi, jeżeli kursor
+ * jest już na polu w znajdującym się w kolumnie pierwszej od prawej.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static inline void inter_mode_move_cursor_right(inter_mode_t *imode) {
     if (imode->cursor_col + imode->board_field_width < imode->board_width - 1) {
         imode->cursor_col += imode->board_field_width;
     }
 }
 
+/** @brief Przesuwa wirtualny kursor o jedno pole w górę.
+ * Przesuwa wirtualny kursor o jedno pole w górę. Nic nie robi, jeżeli kursor
+ * jest już na polu w znajdującym się w wierszu pierwszym od góry.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static inline void inter_mode_move_cursor_up(inter_mode_t *imode) {
     if (imode->cursor_row > 0) {
         imode->cursor_row--;
     }
 }
 
+/** @brief Przesuwa wirtualny kursor o jedno pole w dół.
+ * Przesuwa wirtualny kursor o jedno pole w dół. Nic nie robi, jeżeli kursor
+ * jest już na polu w znajdującym się w wierszu pierwszym od dołu.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static inline void inter_mode_move_cursor_down(inter_mode_t *imode) {
     if (imode->cursor_row < imode->board_height - 1) {
         imode->cursor_row++;
     }
 }
 
+/** @brief Aktualizuje położenie prawdziwego kursora.
+ * Aktualizuje położenie prawdziwego kursora w terminalu, tak, by odzwierciedlał
+ * on pozycję zajmowaną przez wirtualny kursor.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                    interaktywnego.
+ */
 static inline void inter_mode_update_cursor_on_display(inter_mode_t *imode) {
     printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
 }
 
+/** @brief Przesuwa wirtualny i prawdziwy kursor pod planszę.
+ * Przesuwa wirtualny kursor pod planszę i aktualizuje położenie prawdziwego
+ * kursora w terminalu tak, by odzwierciedlał on pozycję zajmowaną przez
+ * wirtualny kursor.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                    interaktywnego.
+ */
+static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
+    imode->cursor_row = imode->board_height;
+    imode->cursor_col = 0;
+
+    inter_mode_update_cursor_on_display(imode);
+}
+
+/** @brief Przesuwa wirtualny i prawdziwy kursor na pozycję startową.
+ * Przesuwa wirtualny kursor na pozycję startową, będącą środkiem planszy
+ * i aktualizuje położenie prawdziwego kursora w terminalu tak, by odzwierciedlał
+ * on pozycję zajmowaną przez wirtualny kursor.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                    interaktywnego.
+ */
+static inline void inter_mode_move_cursor_to_starting_position(inter_mode_t *imode) {
+    imode->cursor_row = (imode->board_height - 1) / 2;
+    imode->cursor_col = (imode->board_width - 2) / 2;
+
+    inter_mode_find_cursor_column(imode);
+    inter_mode_update_cursor_on_display(imode);
+}
+
+/** @brief Wyświetla wiersz tekstowej reprezentacji planszy.
+ * Wyświetla wiersz tekstowej reprezentacji planszy, w którym aktualnie znajduje
+ * się wirtualny kursor, poczynając od pola na którym znajduje się ten kursor.
+ * Miejsce, w którym rozpocznie się wyświetlanie, jest położenie prawdziwego kursora
+ * w terminalu.
+ * Funkcja ta nie zmienia położenia wirtualnego kursora, jednak po zakończeniu
+ * działania funkcji prawidzwy kursor będzie znajdować się tam, gdzie zakończono
+ * wyświetlanie.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                    interaktywnego.
+ */
 static inline void inter_mode_print_row(inter_mode_t *imode) {
     uint32_t x, y;
     inter_mode_gamma_coordinates(imode, &x, &y);
@@ -223,6 +314,13 @@ static inline void inter_mode_print_row(inter_mode_t *imode) {
     }
 }
 
+/** @brief Wyświetla tekstową reprezentację planszy.
+ * Czyści cały ekran, po czym wyświetla tekstową reprezentację planszy, na której
+ * toczona jest rozgrywka. Po zakończeniu działania funkcji zarówno prawdziwy,
+ * jak i wirtualny kursor znjdują się na początku pierwszego wiersza pod planszą.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static inline void inter_mode_print_board(inter_mode_t *imode) {
     printf(CLEAR_SCREEN);
     printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
@@ -236,6 +334,12 @@ static inline void inter_mode_print_board(inter_mode_t *imode) {
     }
 }
 
+/** @brief Wyłącza podświetlanie aktualnego pola i wyświetla na nowo wiersz.
+ * Wyłącza podświetlanie pola na którym znajduje się wirtualny kursor i wyświetla
+ * na nowo wiersz, do którego należy to pole.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static inline void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imode) {
     uint32_t x, y;
     inter_mode_gamma_coordinates(imode, &x, &y);
@@ -251,6 +355,12 @@ static inline void inter_mode_turn_reverse_off_and_reprint_row(inter_mode_t *imo
     inter_mode_update_cursor_on_display(imode);
 }
 
+/** @brief Oblicza liczbę znaków pola do podświetlenia.
+ * Oblicza, ile znaków pola na którym aktualnie znajduje się wirtualny kursor
+ * należy podświetlić.
+ * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                    interaktywnego.
+ */
 static unsigned inter_mode_chars_to_reverse_in_current_field(inter_mode_t *imode) {
     if (imode->board_field_width == 1) {
         return 1;
@@ -276,6 +386,12 @@ static unsigned inter_mode_chars_to_reverse_in_current_field(inter_mode_t *imode
     }
 }
 
+/** @brief Włącza podświetlanie aktualnego pola i wyświetla na nowo wiersz.
+ * Włącza podświetlanie pola na którym znajduje się wirtualny kursor i wyświetla
+ * na nowo wiersz, do którego należy to pole.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego.
+ */
 static void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
     uint32_t x, y;
     inter_mode_gamma_coordinates(imode, &x, &y);
@@ -306,30 +422,26 @@ static void inter_mode_turn_reverse_on_and_reprint_row(inter_mode_t *imode) {
     inter_mode_update_cursor_on_display(imode);
 }
 
-static inline void inter_mode_update_display(inter_mode_t *imode,
-                                             cursor_move_fun cur_mv_f) {
+/** @brief Aktualizuje sposób wyświetlania planszy.
+ * Wywołuje funkcję wskazywaną przez cur_mv_f, zmieniającą położenie wirtualnego
+ * kursora. Aktualizuje sposób wyświetlania planszy wskutek zmiany położenia tego
+ * kursora przez gracza.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego,
+ * @param[in] cur_mv_f  – wskaźnik na funkcję poruszającą wirtualnym kursorem.
+ */
+static inline void inter_mode_update_board_display(inter_mode_t *imode,
+                                                   cursor_move_fun cur_mv_f) {
     inter_mode_turn_reverse_off_and_reprint_row(imode);
     cur_mv_f(imode);
     inter_mode_turn_reverse_on_and_reprint_row(imode);
 }
 
-static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
-    inter_mode_turn_reverse_off_and_reprint_row(imode);
-
-    imode->cursor_row = imode->board_height;
-    imode->cursor_col = 0;
-
-    inter_mode_update_cursor_on_display(imode);
-}
-
-static inline void inter_mode_move_cursor_to_starting_position(inter_mode_t *imode) {
-    imode->cursor_row = (imode->board_height - 1) / 2;
-    imode->cursor_col = (imode->board_width - 2) / 2;
-
-    inter_mode_find_cursor_column(imode);
-    inter_mode_update_cursor_on_display(imode);
-}
-
+/** @brief Wyświetla wiersz zachęcający gracza do wykonania ruchu.
+ * @param[in] imode  – wskaźnik na strukturę przechowującą stan trybu
+ *                     interaktywnego,
+ * @param[in] player – numer gracza.
+ */
 static inline void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player) {
     uint64_t player_busy_fields = gamma_busy_fields(imode->g, player);
     uint64_t player_free_fields = gamma_free_fields(imode->g, player);
@@ -344,6 +456,12 @@ static inline void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player)
     }
 }
 
+/** @brief Wyświetla podsumowanie rozgrywki.
+ * Wyświetla podsumowanie rozgrywki, drukując dla każdego gracza w osobnym wierszu
+ * ile pól zostało przez niego zajętych.
+ * @param[in] imode  – wskaźnik na strukturę przechowującą stan trybu
+ *                     interaktywnego.
+ */
 static inline void inter_mode_print_summary(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
 
@@ -355,11 +473,19 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
     }
 }
 
-/** @name Rozgrywka
- * Zarządzanie rozgrywką oraz obsługa akcji wykonywanych przez graczy.
+/** @brief Wykonuje ruch przez gracza.
+ * Wywołuje funkcję wskazywaną przez g_mv_f, wykonującą ruch przez gracza.
+ * Aktualizuje sposób wyświetlania planszy wskutek zmiany jej tekstowej
+ * reprezentacji.
+ * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
+ *                        interaktywnego,
+ * @param[in] g_mv_f    – wskaźnik na funkcję wykonującą ruch gracza,
+ * @param[in] player    – numer gracza wykonującego ruch,
+ * @param[in] x         – numer kolumny na której znajduje się pole, na którym
+ *                        gracz @p player wykonuje ruch,
+ * @param[in] y         – numer wiersza na którym znajduje się pole, na którym
+ *                        gracz @p player wykonuje ruch.
  */
-///@{
-
 static inline bool inter_mode_gamma_move(inter_mode_t *imode, gamma_move_fun g_mv_f,
                                          uint32_t player, uint32_t x, uint32_t y) {
     if (g_mv_f(imode->g, player, x, y)) {
@@ -383,16 +509,16 @@ static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
 
         if (c == KEY_UP || c == KEY_DOWN || c == KEY_RIGHT || c == KEY_LEFT) {
             if (c == KEY_UP) {
-                inter_mode_update_display(imode, inter_mode_move_cursor_up);
+                inter_mode_update_board_display(imode, inter_mode_move_cursor_up);
             }
             else if (c == KEY_DOWN) {
-                inter_mode_update_display(imode, inter_mode_move_cursor_down);
+                inter_mode_update_board_display(imode, inter_mode_move_cursor_down);
             }
             else if (c == KEY_RIGHT) {
-                inter_mode_update_display(imode, inter_mode_move_cursor_right);
+                inter_mode_update_board_display(imode, inter_mode_move_cursor_right);
             }
             else {
-                inter_mode_update_display(imode, inter_mode_move_cursor_left);
+                inter_mode_update_board_display(imode, inter_mode_move_cursor_left);
             }
 
             c = getchar();
@@ -459,6 +585,7 @@ static void inter_mode_play_gamma(inter_mode_t *imode) {
                 uint32_t cursor_row = imode->cursor_row;
                 uint64_t cursor_col = imode->cursor_col;
 
+                inter_mode_turn_reverse_off_and_reprint_row(imode);
                 inter_mode_move_cursor_below_board(imode);
                 inter_mode_print_prompt(imode, player);
 
@@ -474,8 +601,6 @@ static void inter_mode_play_gamma(inter_mode_t *imode) {
         }
     }
 }
-
-///@}
 
 static inline bool inter_mode_set_up_terminal(struct termios *old_term,
                                               struct termios *new_term) {
