@@ -17,7 +17,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 
-#include "gamma.h"
 #include "inter_mode.h"
 
 /**

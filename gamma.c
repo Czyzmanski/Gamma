@@ -10,7 +10,6 @@
 #include <inttypes.h>
 
 #include "gamma.h"
-#include "field.h"
 
 /**
  * Maksymalna liczba pól, z jakimi pole może sąsiadować.

@@ -8,7 +8,6 @@
 #include <stdlib.h>
 
 #include "parser.h"
-#include "gamma.h"
 #include "inter_mode.h"
 
 /**
