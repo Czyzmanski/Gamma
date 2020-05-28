@@ -553,21 +553,25 @@ static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
 
 /** @brief Obsługuje dane pojawiające się na standardowym wejściu.
  * Obsługuje dane pojawiające się na standardowym wejściu w wyniku wciskania
- * przez graczy klawiszy na klawiaturze.
+ * przez gracza klawiszy na klawiaturze.
  * @param[in,out] imode                   – wskaźnik na strukturę przechowującą
  *                                          stan trybu interaktywnego,
  * @param[in] player                      – numer gracza,
  * @param[in,out] end_of_game_key_pressed – wskaźnik na zmienną przechowującą
  *                                          informację o tym, czy wystąpił kod
  *                                          @ref END_OF_GAME_KEY.
+ * @return Wartośc @p true, jeżeli wczytane dane były poprawne, to znaczy jeżeli
+ * nie wystąpił kod @p EOF, a @p false w przeciwnym przypadku.
  */
-static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
+static bool inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
                                     bool *end_of_game_key_pressed) {
     int c = getchar();
     bool quit_key_pressed = false, player_valid_move = false;
     bool player_golden_possible = gamma_golden_possible(imode->g, player);
 
-    while (!player_valid_move && !quit_key_pressed && !(*end_of_game_key_pressed)) {
+    while (c != EOF && !player_valid_move
+           && !quit_key_pressed && !(*end_of_game_key_pressed)) {
+
         if (c == QUIT_MOVE_KEY || toupper(c) == QUIT_MOVE_KEY) {
             quit_key_pressed = true;
         }
@@ -598,19 +602,26 @@ static void inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
             c = getchar();
         }
     }
+
+    return c != EOF;
 }
 
-/** @brief Obsługuje dane pojawiające się na standardowym wejściu.
- * Obsługuje dane pojawiające się na standardowym wejściu w wyniku wciskania
- * przez graczy klawiszy na klawiaturze.
+/** @brief Prowadzi rozgrywkę.
+ * Odpowiada za prowadzenie rozgrywki i poprawne wyświetlanie planszy. Sprawdza,
+ * czy gra powinna być kontynuowana, zachęca graczy do wykonywania ruchów oraz
+ * obsługuje ich akcje.
  * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
  *                        interaktywnego.
+ * @return Wartośc @p true, jeżeli wczytywane dane były poprawne, to znaczy jeżeli
+ * nie wystąpił kod @p EOF, a @p false w przeciwnym przypadku.
  */
-static void inter_mode_play_gamma(inter_mode_t *imode) {
+static bool inter_mode_play_gamma(inter_mode_t *imode) {
     uint32_t num_of_players = gamma_players(imode->g);
-    bool any_player_possible_move = true, end_of_game_key_pressed = false;
+    bool valid_input = true;
+    bool any_player_possible_move = true;
+    bool end_of_game_key_pressed = false;
 
-    while (any_player_possible_move && !end_of_game_key_pressed) {
+    while (valid_input && any_player_possible_move && !end_of_game_key_pressed) {
         any_player_possible_move = false;
         uint64_t player = 1;
 
@@ -633,12 +644,15 @@ static void inter_mode_play_gamma(inter_mode_t *imode) {
 
                 inter_mode_turn_reverse_on_and_reprint_row(imode);
 
-                inter_mode_handle_input(imode, player, &end_of_game_key_pressed);
+                valid_input = inter_mode_handle_input(imode, player,
+                                                      &end_of_game_key_pressed);
             }
 
             player++;
         }
     }
+
+    return valid_input;
 }
 
 /** @brief Przygotowuje terminal do trybu interaktywnego.
@@ -725,7 +739,7 @@ bool inter_mode_launch(gamma_t *g) {
             inter_mode_move_cursor_to_starting_position(&imode);
             inter_mode_turn_reverse_on_and_reprint_row(&imode);
 
-            inter_mode_play_gamma(&imode);
+            bool valid_input = inter_mode_play_gamma(&imode);
 
             printf(DISABLE_ALTERNATIVE_SCREEN_BUFFER);
 
@@ -735,10 +749,11 @@ bool inter_mode_launch(gamma_t *g) {
             printf(SHOW_CURSOR);
 
             if (is_terminal) {
-                return tcsetattr(fileno(stdin), TCSANOW, &old_term) == 0;
+                return tcsetattr(fileno(stdin), TCSANOW, &old_term) == 0
+                       && valid_input;
             }
             else {
-                return true;
+                return valid_input;
             }
         }
     }
