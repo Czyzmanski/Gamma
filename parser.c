@@ -376,7 +376,7 @@ bool read_lines(gamma_t **g, char **buf, size_t buffer_size, input_mode_t *mode)
         }
 
         if (buffer[0] != '\n' && buffer[0] != COMMENT) {
-            if (buffer[line_len - 1] != '\n') {
+            if (buffer[line_len - 1] != '\n' || strlen(buffer) != (size_t) line_len) {
                 print_error(line_num);
             }
             else if (*mode == BATCH_MODE) {
