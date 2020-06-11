@@ -40,9 +40,13 @@
  */
 #define TURN_ON_REVERSE_VIDEO "\x1b[7m"
 /**
- * Ustawia kolor napisu na czerowny.
+ * Ustawia kolor napisu na czerwony.
  */
 #define TURN_ON_RED_FONT "\x1b[31m"
+/**
+ * Ustawia kolor napisu na zółty.
+ */
+#define TURN_ON_YELLOW_FONT "\x1b[33m"
 /**
  * Przywraca domyślne ustawienia graficzne.
  */
@@ -77,7 +81,7 @@
 /**
  * Wiadomość zachęcająca gracza do wykonania ruchu.
  */
-#define PROMPT "Player %*" PRIu32 ", busy fields: %" PRIu64 ", free fields: %" PRIu64
+#define PROMPT "Player %" PRIu32 ", busy fields: %" PRIu64 ", free fields: %" PRIu64
 /**
  * Wiadomość informująca gracza o możliwości wykonania złotego ruchu.
  */
@@ -85,7 +89,12 @@
 /**
  * Wiadomość informująca o uzyskanym przez gracza wyniku.
  */
-#define SUMMARY "PLAYER %*" PRIu64 " %*" PRIu64 "\n"
+#define SUMMARY "Player %*" PRIu32 ", busy fields: %*" PRIu64 "\n"
+
+/**
+ * Wiadomość informująca o zwycięstwie danego gracza.
+ */
+#define VICTORY "\nPlayer %" PRIu32 " won the game with %" PRIu64 " busy fields\n"
 
 /**
  * Kod generowany przez wciśnięcie klawisza @p Esc, zapisany heksadecymalnie.
@@ -160,6 +169,9 @@ struct inter_mode {
     unsigned board_field_width; /**< Szerokość pola na wyświetlanej planszy. */
     unsigned player_width;      /**< Szerokość z jaką mają być wypisywane numery
                                  *   graczy. */
+    uint32_t player;            /**< Numer gracza obecnie posiadającego ruch. */
+    bool coloring;              /**< Zmienna wskazująca, czy pola gracza
+                                 *   posiadającego ruch są wyróżniane kolorem. */
 };
 
 /**
@@ -268,20 +280,6 @@ static inline void inter_mode_update_cursor_on_display(inter_mode_t *imode) {
     printf(MOVE_CURSOR_TO, imode->cursor_row + 1, imode->cursor_col + 1);
 }
 
-/** @brief Przesuwa wirtualny i prawdziwy kursor pod planszę.
- * Przesuwa wirtualny kursor pod planszę i aktualizuje położenie prawdziwego
- * kursora w terminalu tak, by odzwierciedlał on pozycję zajmowaną przez
- * wirtualny kursor.
- * @param[in] imode – wskaźnik na strukturę przechowującą stan trybu
- *                    interaktywnego.
- */
-static inline void inter_mode_move_cursor_below_board(inter_mode_t *imode) {
-    imode->cursor_row = imode->board_height;
-    imode->cursor_col = 0;
-
-    inter_mode_update_cursor_on_display(imode);
-}
-
 /** @brief Przesuwa wirtualny i prawdziwy kursor na pozycję startową.
  * Przesuwa wirtualny kursor na pozycję startową, będącą środkiem planszy
  * i aktualizuje położenie prawdziwego kursora w terminalu tak, by odzwierciedlał
@@ -316,8 +314,13 @@ static inline void inter_mode_print_row(inter_mode_t *imode) {
     while (x < gamma_width) {
         char field_repr[FIELD_MAX_WIDTH + 1];
         gamma_board_field_repr(imode->g, x, y, field_repr);
+        uint32_t field_owner = gamma_board_field_owner(imode->g, x, y);
 
+        if (imode->coloring && imode->player == field_owner) {
+            printf(TURN_ON_YELLOW_FONT);
+        }
         printf("%s", field_repr);
+        printf(RESET);
 
         x++;
     }
@@ -448,26 +451,26 @@ static inline void inter_mode_update_board_display(inter_mode_t *imode,
 
 /** @brief Wyświetla wiersz zachęcający gracza do wykonania ruchu.
  * @param[in] imode  – wskaźnik na strukturę przechowującą stan trybu
- *                     interaktywnego,
- * @param[in] player – numer gracza.
+ *                     interaktywnego.
  */
-static inline void inter_mode_print_prompt(inter_mode_t *imode, uint32_t player) {
-    uint64_t player_busy_fields = gamma_busy_fields(imode->g, player);
-    uint64_t player_free_fields = gamma_free_fields(imode->g, player);
-    bool player_golden_possible = gamma_golden_possible(imode->g, player);
+static inline void inter_mode_print_prompt(inter_mode_t *imode) {
+    uint64_t player_busy_fields = gamma_busy_fields(imode->g, imode->player);
+    uint64_t player_free_fields = gamma_free_fields(imode->g, imode->player);
+    bool player_golden_possible = gamma_golden_possible(imode->g, imode->player);
 
     printf(CLEAR_LINE_FROM_CURSOR_TO_END);
-    printf(PROMPT, imode->player_width, player,
-           player_busy_fields, player_free_fields);
+    printf(PROMPT, imode->player, player_busy_fields, player_free_fields);
 
     if (player_golden_possible) {
         printf(PROMPT_GOLDEN_POSSIBLE);
     }
 }
 
-/** @brief Wyświetla podsumowanie rozgrywki.
+/** @brief Wyświetla podsumowanie rozgrywki wraz z wynikiem.
  * Wyświetla podsumowanie rozgrywki, drukując dla każdego gracza w osobnym wierszu
- * ile pól zostało przez niego zajętych.
+ * ile pól zostało przez niego zajętych. Informuje, czy rozgrywka zakończyła się
+ * remisem czy zwycięstwem któregoś z graczy. W drugim przypadku, drukuje informacje
+ * o zwycięzcy.
  * @param[in] imode  – wskaźnik na strukturę przechowującą stan trybu
  *                     interaktywnego.
  */
@@ -478,9 +481,31 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
 
     printf(CLEAR_LINE_FROM_CURSOR_TO_END);
 
-    for (uint64_t player = 1; player <= num_of_players; player++) {
+    for (uint32_t player = 0; player++ < num_of_players;) {
         printf(SUMMARY, imode->player_width, player,
                busy_fields_width, gamma_busy_fields(imode->g, player));
+    }
+
+    uint64_t max_busy_fields = 0;
+    uint32_t max_busy_fields_player = 0, max_busy_fields_player_count = 0;
+
+    for (uint32_t player = 0; player++ < num_of_players;) {
+        uint64_t busy_fields = gamma_busy_fields(imode->g, player);
+        if (max_busy_fields < busy_fields) {
+            max_busy_fields = busy_fields;
+            max_busy_fields_player = player;
+            max_busy_fields_player_count = 1;
+        }
+        else if (max_busy_fields == busy_fields) {
+            max_busy_fields_player_count++;
+        }
+    }
+
+    if (max_busy_fields_player_count == 1) {
+        printf(VICTORY, max_busy_fields_player, max_busy_fields);
+    }
+    else {
+        printf("\nThe game ended in a tie\n");
     }
 }
 
@@ -491,7 +516,6 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
  * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
  *                        interaktywnego,
  * @param[in] g_mv_f    – wskaźnik na funkcję wykonującą ruch gracza,
- * @param[in] player    – numer gracza wykonującego ruch,
  * @param[in] x         – numer kolumny na której znajduje się pole, na którym
  *                        gracz @p player wykonuje ruch,
  * @param[in] y         – numer wiersza na którym znajduje się pole, na którym
@@ -500,8 +524,8 @@ static inline void inter_mode_print_summary(inter_mode_t *imode) {
  * @p g_mv_f był równy @p true, a @p false w przeciwnym przypadku.
  */
 static inline bool inter_mode_gamma_move(inter_mode_t *imode, gamma_move_fun g_mv_f,
-                                         uint32_t player, uint32_t x, uint32_t y) {
-    if (g_mv_f(imode->g, player, x, y)) {
+                                         uint32_t x, uint32_t y) {
+    if (g_mv_f(imode->g, imode->player, x, y)) {
         inter_mode_turn_reverse_on_and_reprint_row(imode);
 
         return true;
@@ -556,18 +580,17 @@ static int inter_mode_handle_input_when_esc(inter_mode_t *imode) {
  * przez gracza klawiszy na klawiaturze.
  * @param[in,out] imode                   – wskaźnik na strukturę przechowującą
  *                                          stan trybu interaktywnego,
- * @param[in] player                      – numer gracza,
  * @param[in,out] end_of_game_key_pressed – wskaźnik na zmienną przechowującą
  *                                          informację o tym, czy wystąpił kod
  *                                          @ref END_OF_GAME_KEY.
  * @return Wartośc @p true, jeżeli wczytane dane były poprawne, to znaczy jeżeli
  * nie wystąpił kod @p EOF, a @p false w przeciwnym przypadku.
  */
-static bool inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
+static bool inter_mode_handle_input(inter_mode_t *imode,
                                     bool *end_of_game_key_pressed) {
     int c = getchar();
     bool quit_key_pressed = false, player_valid_move = false;
-    bool player_golden_possible = gamma_golden_possible(imode->g, player);
+    bool player_golden_possible = gamma_golden_possible(imode->g, imode->player);
 
     while (c != EOF && !player_valid_move
            && !quit_key_pressed && !(*end_of_game_key_pressed)) {
@@ -583,12 +606,11 @@ static bool inter_mode_handle_input(inter_mode_t *imode, uint32_t player,
             inter_mode_gamma_coordinates(imode, &x, &y);
 
             if (c == MOVE_KEY) {
-                player_valid_move = inter_mode_gamma_move(imode, gamma_move,
-                                                          player, x, y);
+                player_valid_move = inter_mode_gamma_move(imode, gamma_move, x, y);
             }
             else if (player_golden_possible) {
                 player_valid_move = inter_mode_gamma_move(imode, gamma_golden_move,
-                                                          player, x, y);
+                                                          x, y);
             }
 
             if (!player_valid_move) {
@@ -626,6 +648,7 @@ static bool inter_mode_play_gamma(inter_mode_t *imode) {
         uint32_t player = 0;
 
         while (player++ < num_of_players && !end_of_game_key_pressed) {
+            imode->player = player;
             uint64_t player_free_fields = gamma_free_fields(imode->g, player);
             bool player_gamma_possible = gamma_golden_possible(imode->g, player);
 
@@ -635,16 +658,18 @@ static bool inter_mode_play_gamma(inter_mode_t *imode) {
                 uint32_t cursor_row = imode->cursor_row;
                 uint64_t cursor_col = imode->cursor_col;
 
-                inter_mode_turn_reverse_off_and_reprint_row(imode);
-                inter_mode_move_cursor_below_board(imode);
-                inter_mode_print_prompt(imode, player);
+                printf(CLEAR_SCREEN);
+                printf(MOVE_CURSOR_TO_TOP_LEFT_CORNER);
+
+                inter_mode_print_board(imode);
+                inter_mode_print_prompt(imode);
 
                 imode->cursor_row = cursor_row, imode->cursor_col = cursor_col;
                 inter_mode_update_cursor_on_display(imode);
 
                 inter_mode_turn_reverse_on_and_reprint_row(imode);
 
-                valid_input = inter_mode_handle_input(imode, player,
+                valid_input = inter_mode_handle_input(imode,
                                                       &end_of_game_key_pressed);
             }
         }
@@ -693,7 +718,7 @@ static inline bool inter_mode_check_terminal_size(inter_mode_t *imode) {
 }
 
 /** @brief Inicjuje strukturę przechowującą stan trybu interaktywnego.
- * Inicjuje strukturę przechowującą stan trybu interaktywnego tak, by rerezentowała
+ * Inicjuje strukturę przechowującą stan trybu interaktywnego tak, by reprezentowała
  * początkowy stan działania programu w tym trybie.
  * @param[in,out] imode – wskaźnik na strukturę przechowującą stan trybu
  *                        interaktywnego,
@@ -707,6 +732,8 @@ static inline void inter_mode_init(inter_mode_t *imode, gamma_t *g) {
     imode->board_field_width = gamma_board_field_width(g);
     imode->player_width = imode->board_field_width == 1 ?
                           imode->board_field_width : imode->board_field_width - 1;
+    imode->player = 1;
+    imode->coloring = true;
 }
 
 bool inter_mode_launch(gamma_t *g) {
@@ -733,14 +760,12 @@ bool inter_mode_launch(gamma_t *g) {
             printf(HIDE_CURSOR);
             printf(ENABLE_ALTERNATIVE_SCREEN_BUFFER);
 
-            inter_mode_print_board(&imode);
             inter_mode_move_cursor_to_starting_position(&imode);
-            inter_mode_turn_reverse_on_and_reprint_row(&imode);
-
             bool valid_input = inter_mode_play_gamma(&imode);
 
             printf(DISABLE_ALTERNATIVE_SCREEN_BUFFER);
 
+            imode.coloring = false;
             inter_mode_print_board(&imode);
             inter_mode_print_summary(&imode);
 

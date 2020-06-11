@@ -1251,6 +1251,17 @@ unsigned gamma_board_field_width(gamma_t *g) {
     return g == NULL ? 0 : g->board_field_width;
 }
 
+uint32_t gamma_board_field_owner(gamma_t *g, uint32_t x, uint32_t y) {
+    if (g == NULL || !valid_x(g, x) || !valid_y(g, y)) {
+        return 0;
+    }
+    else {
+        player_t *owner = field_owner(&g->board[y][x]);
+
+        return owner == NULL ? 0 : player_number(owner);
+    }
+}
+
 void gamma_board_field_repr(gamma_t *g, uint32_t x, uint32_t y,
                             char repr[FIELD_MAX_WIDTH + 1]) {
     if (g != NULL && valid_x(g, x) && valid_y(g, y)) {

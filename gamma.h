@@ -145,6 +145,19 @@ uint64_t gamma_board_width(gamma_t *g);
  */
 unsigned gamma_board_field_width(gamma_t *g);
 
+/** @brief Podaje numer gracza zajmującego pole (@p x, @p y).
+ * Podaje numer gracza, który ma ustawiony pionek na polu (@p x, @p y) lub zero,
+ * w przypadku gdy pole jest wolne albo któryś z parametrów jest niepoprawny.
+ * @param[in,out] g   – wskaźnik na strukturę przechowującą stan gry,
+ * @param[in] x       – numer kolumny, liczba nieujemna mniejsza od wartości
+ *                      @p width z funkcji @ref gamma_new,
+ * @param[in] y       – numer wiersza, liczba nieujemna mniejsza od wartości
+ *                      @p height z funkcji @ref gamma_new.
+ * @return Numer gracza zajmującego pole (@p x, @p y) lub zero, gdy to pole jest
+ * wolne albo któryś z parametrów jest niepoprawny.
+ */
+uint32_t gamma_board_field_owner(gamma_t *g, uint32_t x, uint32_t y);
+
 /** @brief Daje napis reprezentujący pole (@p x, @p y).
  * Wpisuje do bufora długości @p FIELD_MAX_WIDTH + 1 wskazywanego przez
  * @p repr tekstową reprezentację pola (@p x, @p y).
