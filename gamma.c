@@ -1086,8 +1086,8 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
                 }
             }
 
-            for (uint64_t i = 1; i <= g->players; i++) {
-                player_init(&g->players_arr[i], i);
+            for (uint32_t player = 0; player++ < g->players;) {
+                player_init(&g->players_arr[player], player);
             }
 
             return true;
@@ -1269,7 +1269,7 @@ uint64_t gamma_max_busy_fields(gamma_t *g) {
     else {
         uint64_t max_busy_fields = 0;
 
-        for (uint64_t player = 1; player <= g->players; player++) {
+        for (uint32_t player = 0; player++ < g->players;) {
             uint64_t busy_fields = gamma_busy_fields(g, player);
 
             if (busy_fields > max_busy_fields) {

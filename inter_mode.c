@@ -77,11 +77,11 @@
 /**
  * Wiadomość zachęcająca gracza do wykonania ruchu.
  */
-#define PROMPT "PLAYER %*" PRIu32 " %" PRIu64 " %" PRIu64
+#define PROMPT "Player %*" PRIu32 ", busy fields: %" PRIu64 ", free fields: %" PRIu64
 /**
  * Wiadomość informująca gracza o możliwości wykonania złotego ruchu.
  */
-#define PROMPT_GOLDEN_POSSIBLE " G"
+#define PROMPT_GOLDEN_POSSIBLE ", golden move possible"
 /**
  * Wiadomość informująca o uzyskanym przez gracza wyniku.
  */
@@ -623,9 +623,9 @@ static bool inter_mode_play_gamma(inter_mode_t *imode) {
 
     while (valid_input && any_player_possible_move && !end_of_game_key_pressed) {
         any_player_possible_move = false;
-        uint64_t player = 1;
+        uint32_t player = 0;
 
-        while (player <= num_of_players && !end_of_game_key_pressed) {
+        while (player++ < num_of_players && !end_of_game_key_pressed) {
             uint64_t player_free_fields = gamma_free_fields(imode->g, player);
             bool player_gamma_possible = gamma_golden_possible(imode->g, player);
 
@@ -647,8 +647,6 @@ static bool inter_mode_play_gamma(inter_mode_t *imode) {
                 valid_input = inter_mode_handle_input(imode, player,
                                                       &end_of_game_key_pressed);
             }
-
-            player++;
         }
     }
 
