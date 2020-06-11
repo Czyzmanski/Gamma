@@ -203,7 +203,7 @@ static inline bool valid_free_field(gamma_t *g, int64_t x, int64_t y) {
  * jest zajęte przez pewnego gracza, a @p false w przeciwnym przypadku.
  */
 static inline bool valid_busy_field(gamma_t *g, int64_t x, int64_t y) {
-    return valid_x(g, x) && valid_y(g, y) && field_owner(&g->board[y][x]) != NULL;
+    return valid_x(g, x) && valid_y(g, y) && !field_is_free(&g->board[y][x]);
 }
 
 /** @brief Sprawdza, czy pole (@p x, @p y) jest poprawne i należy do
@@ -696,10 +696,11 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
 }
 
 /** @brief Sprawdza, czy złoty ruch jest legalny ze strony gracza, który traci pole.
+ * Funkcja zakłada, że współrzędne @p x oraz @p y są poprawne, ponieważ sprawdzenie
+ * tego warunku powinno nastąpić w funkcji wołającej.
+ * Sprawdza, czy pole (@p x, @p y) jest zajęte.
  * Sprawdza, czy złoty ruch jest legalny ze strony gracza, który traci pionek
  * z pola (@p x, @p y).
- * Zakłada, że pole (@p x, @p y) jest poprawnym, zajętym polem, ponieważ sprawdzenie
- * tych warunków następuje w funkcji @ref gamma_golden_possible.
  * Sprawdza, czy po utracie pola (@p x, @p y) przez jego właściciela liczba zajętych
  * przez niego obszarów nie przekroczy maksymalnej dozwolonej liczby obszarów
  * zajętych przez jednego gracza.
@@ -714,29 +715,34 @@ static uint32_t victim_new_areas(gamma_t *g, player_t *victim,
  * a @p false w przeciwnym przypadku.
  */
 static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
-    player_t *victim = field_owner(&g->board[y][x]);
-    unsigned mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
-
-    if (player_areas(victim) + mx_new_areas <= g->areas) {
-        return true;
-    }
-    else if (victim_new_areas(g, victim, x, y) <= g->areas) {
-        return true;
+    if (field_is_free(&g->board[y][x])) {
+        return false;
     }
     else {
-        area_search(g, victim, x, y, UNCHECKED);
+        player_t *victim = field_owner(&g->board[y][x]);
+        unsigned mx_new_areas = player_adjacent_fields(g, victim, x, y) - 1;
 
-        return false;
+        if (player_areas(victim) + mx_new_areas <= g->areas) {
+            return true;
+        }
+        else if (victim_new_areas(g, victim, x, y) <= g->areas) {
+            return true;
+        }
+        else {
+            area_search(g, victim, x, y, UNCHECKED);
+
+            return false;
+        }
     }
 }
 
 /** @brief Sprawdza, czy złoty ruch jest legalny ze strony gracza, który
  * stawia pionek na polu zajętym przez przeciwnika.
+ * Zakłada, że gracz wskazywany przez @p p jeszcze nie wykonał w rozgrywce złotego
+ * ruchu oraz że współrzędne pola (@p x, @p y) są poprawne, ponieważ sprawdzenie
+ * tych warunków powinno nastąpić w funkcji wołającej.
  * Sprawdza, czy złoty ruch jest legalny ze strony gracza wskazywanego
  * przez @p p, który stawia pionek na polu (@p x, @p y) zajętym przez przeciwnika.
- * Zakłada, że gracz wskazywany przez @p p jeszcze nie wykonał w rozgrywce złotego
- * ruchu oraz że pole (@p x, @p y) jest poprawne, ponieważ sprawdzenie tych warunków
- * następuje w funkcji @ref gamma_golden_possible.
  * Sprawdza, czy pole (@p x, @p y) nie jest zajęte przez gracza wskazywanego przez
  * @p p oraz czy po postawieniu pionka na tym polu nie zostanie przekroczona
  * maksymalna liczba obszarów, jakie może gracz zajmować.
@@ -752,10 +758,7 @@ static bool victim_golden_move_legal(gamma_t *g, uint32_t x, uint32_t y) {
  */
 static bool player_golden_move_legal(gamma_t *g, player_t *p,
                                      uint32_t x, uint32_t y) {
-    if (p == NULL) {
-        return true;
-    }
-    else if (field_owner(&g->board[y][x]) == p) {
+    if (field_is_free(&g->board[y][x]) || field_owner(&g->board[y][x]) == p) {
         return false;
     }
     else if (player_areas(p) < g->areas) {
@@ -947,7 +950,7 @@ static inline void board_remove_rows(field_t **board, uint32_t num_of_rows) {
  * pamięci.
  */
 static field_t **board_new(uint32_t width, uint32_t height) {
-    field_t **board = malloc(height * sizeof(field_t *));
+    field_t **board = calloc(height, sizeof(field_t *));
 
     if (board == NULL) {
         return NULL;
@@ -957,7 +960,7 @@ static field_t **board_new(uint32_t width, uint32_t height) {
         uint32_t added_rows = 0;
 
         for (uint32_t i = 0; i < height && !mem_error; i++, added_rows++) {
-            board[i] = malloc(width * sizeof(field_t));
+            board[i] = calloc(width, sizeof(field_t));
             if (board[i] == NULL) {
                 mem_error = true;
                 board_remove_rows(board, added_rows);
@@ -1010,7 +1013,7 @@ static void gamma_board_fill(gamma_t *g, char *board) {
  * planszy lub NULL, jeśli nie udało się zaalokować pamięci.
  */
 static char *gamma_board_new(gamma_t *g, uint64_t board_len) {
-    char *board = malloc(board_len * sizeof(char));
+    char *board = calloc(board_len, sizeof(char));
 
     if (board != NULL) {
         gamma_board_fill(g, board);
@@ -1059,7 +1062,7 @@ static bool gamma_init(gamma_t *g, uint32_t width, uint32_t height,
         return false;
     }
     else {
-        g->players_arr = malloc(((uint64_t) players + 1) * sizeof(player_t));
+        g->players_arr = calloc(((uint64_t) players + 1), sizeof(player_t));
 
         if (g->players_arr == NULL) {
             return false;
@@ -1154,12 +1157,36 @@ bool gamma_golden_possible(gamma_t *g, uint32_t player) {
     else {
         player_t *p = &g->players_arr[player];
 
-        return player_golden_possible(p) && player_busy_fields(p) < g->busy_fields;
+        if (!player_golden_possible(p) || player_busy_fields(p) == g->busy_fields) {
+            return false;
+        }
+        else if (player_areas(p) < g->areas) {
+            return true;
+        }
+        else {
+            for (uint32_t y = 0; y < g->height; y++) {
+                for (uint32_t x = 0; x < g->width; x++) {
+                    if (player_golden_move_legal(g, p, x, y)
+                        && victim_golden_move_legal(g, x, y)) {
+
+                        player_t *victim = field_owner(&g->board[y][x]);
+                        area_search(g, victim, x, y, UNCHECKED);
+
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
     }
 }
 
 bool gamma_golden_move(gamma_t *g, uint32_t player, uint32_t x, uint32_t y) {
-    if (!gamma_golden_possible(g, player)) {
+    if (g == NULL || !valid_player(g, player)) {
+        return false;
+    }
+    else if (!player_golden_possible(&g->players_arr[player])) {
         return false;
     }
     else if (!valid_busy_field(g, x, y)) {
