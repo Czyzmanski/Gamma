@@ -1,7 +1,8 @@
 /** @file
  * Interfejs klasy przechowującej stan gry gamma
  *
- * @author Marcin Peczarski <marpe@mimuw.edu.pl>, Szymon Czyżmański 417797
+ * @author Marcin Peczarski <marpe@mimuw.edu.pl>
+ * @author Szymon Czyżmański 417797
  * @copyright Uniwersytet Warszawski
  * @date 18.03.2020
  */
