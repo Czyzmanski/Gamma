@@ -1,1 +1,1 @@
-# DuzeZadanie_1
+# Gamma
